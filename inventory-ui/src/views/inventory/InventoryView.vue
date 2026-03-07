@@ -8,11 +8,11 @@
       <div class="flex items-center gap-2">
         <!-- Export buttons -->
         <div class="flex items-center gap-1">
-          <button @click="exportExcel" :disabled="exporting" class="btn-export-excel" title="Export Excel">
+          <button @click="exportExcel" :disabled="exporting !== null" class="btn-export-excel" title="Export Excel">
             <FileSpreadsheet class="w-3.5 h-3.5" />
             <span class="text-xs">{{ exporting === 'excel' ? 'Loading...' : 'Excel' }}</span>
           </button>
-          <button @click="exportPdf" :disabled="exporting" class="btn-export-pdf" title="Export PDF">
+          <button @click="exportPdf" :disabled="exporting !== null" class="btn-export-pdf" title="Export PDF">
             <FileText class="w-3.5 h-3.5" />
             <span class="text-xs">{{ exporting === 'pdf' ? 'Loading...' : 'PDF' }}</span>
           </button>
