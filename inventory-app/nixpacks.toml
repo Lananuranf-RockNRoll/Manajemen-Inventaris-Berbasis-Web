@@ -22,6 +22,10 @@ cmds = [
     "php artisan route:cache",
     "php artisan view:cache"
 ]
+[phases.deploy]
+cmds = [
+    "php artisan migrate --seed --force"
+]
 
 [start]
 cmd = "php artisan serve --host=0.0.0.0 --port=$PORT"
