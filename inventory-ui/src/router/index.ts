@@ -60,16 +60,19 @@ const router = createRouter({
   ],
 })
 
-router.beforeEach((to, _from, next) => {
+// ✅ Fixed: gunakan return value, bukan next()
+router.beforeEach((to, _from) => {
   const auth = useAuthStore()
 
   if (to.meta.requiresAuth && !auth.isAuthenticated) {
-    next('/login')
-  } else if (to.meta.guest && auth.isAuthenticated) {
-    next('/')
-  } else {
-    next()
+    return '/login'
   }
+
+  if (to.meta.guest && auth.isAuthenticated) {
+    return '/'
+  }
+
+  return true
 })
 
 export default router

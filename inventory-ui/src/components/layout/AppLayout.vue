@@ -1,10 +1,19 @@
 <template>
   <div class="flex h-screen bg-zinc-950 text-zinc-100 overflow-hidden">
+
+    <!-- Mobile Overlay -->
+    <div
+        v-if="mobileOpen"
+        class="fixed inset-0 bg-black/60 backdrop-blur-sm z-20 lg:hidden"
+        @click="mobileOpen = false"
+    />
+
     <!-- Sidebar -->
     <aside
         :class="[
-        'flex flex-col border-r border-zinc-800 bg-zinc-900 transition-all duration-300 shrink-0',
-        sidebarOpen ? 'w-64' : 'w-16',
+        'fixed lg:relative z-30 flex flex-col border-r border-zinc-800 bg-zinc-900 transition-all duration-300 shrink-0 h-full',
+        sidebarOpen ? 'lg:w-64' : 'lg:w-16',
+        mobileOpen ? 'translate-x-0 w-64' : '-translate-x-full lg:translate-x-0',
       ]"
     >
       <!-- Logo -->
@@ -12,9 +21,16 @@
         <div class="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center shrink-0">
           <Package class="w-4 h-4 text-white" />
         </div>
-        <span v-if="sidebarOpen" class="font-bold text-sm tracking-wide text-white truncate">
+        <span v-if="sidebarOpen || mobileOpen" class="font-bold text-sm tracking-wide text-white truncate">
           InvenSys
         </span>
+        <button
+            v-if="mobileOpen"
+            @click="mobileOpen = false"
+            class="ml-auto p-1 rounded-md text-zinc-400 hover:text-zinc-100 lg:hidden"
+        >
+          <X class="w-4 h-4" />
+        </button>
       </div>
 
       <!-- Nav -->
@@ -23,6 +39,7 @@
             v-for="item in navItems"
             :key="item.to"
             :to="item.to"
+            @click="mobileOpen = false"
             class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors"
             :class="
             isActive(item.to)
@@ -31,26 +48,24 @@
           "
         >
           <component :is="item.icon" class="w-4 h-4 shrink-0" />
-          <span v-if="sidebarOpen" class="truncate">{{ item.label }}</span>
+          <span v-if="sidebarOpen || mobileOpen" class="truncate">{{ item.label }}</span>
         </RouterLink>
       </nav>
 
       <!-- User info -->
       <div class="border-t border-zinc-800 p-3">
         <div class="flex items-center gap-3">
-          <div
-              class="w-8 h-8 rounded-full bg-indigo-700 flex items-center justify-center text-xs font-bold text-white shrink-0"
-          >
+          <div class="w-8 h-8 rounded-full bg-indigo-700 flex items-center justify-center text-xs font-bold text-white shrink-0">
             {{ userInitials }}
           </div>
-          <div v-if="sidebarOpen" class="flex-1 min-w-0">
+          <div v-if="sidebarOpen || mobileOpen" class="flex-1 min-w-0">
             <p class="text-xs font-semibold text-zinc-200 truncate">{{ auth.user?.name }}</p>
             <span :class="roleBadgeClass" class="text-[10px] px-1.5 py-0.5 rounded-full font-semibold capitalize">
               {{ auth.user?.role }}
             </span>
           </div>
           <button
-              v-if="sidebarOpen"
+              v-if="sidebarOpen || mobileOpen"
               @click="handleLogout"
               class="p-1.5 rounded-md text-zinc-500 hover:text-red-400 hover:bg-zinc-800 transition-colors"
               title="Logout"
@@ -64,27 +79,38 @@
     <!-- Main -->
     <div class="flex-1 flex flex-col min-w-0 overflow-hidden">
       <!-- Topbar -->
-      <header class="h-16 border-b border-zinc-800 bg-zinc-900 flex items-center gap-4 px-6 shrink-0">
+      <header class="h-16 border-b border-zinc-800 bg-zinc-900 flex items-center gap-3 px-4 lg:px-6 shrink-0">
+
+        <!-- Mobile hamburger -->
         <button
-            @click="sidebarOpen = !sidebarOpen"
-            class="p-2 rounded-lg text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100 transition-colors"
+            @click="mobileOpen = !mobileOpen"
+            class="p-2 rounded-lg text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100 transition-colors lg:hidden"
         >
           <Menu class="w-4 h-4" />
         </button>
-        <div class="flex-1">
-          <h1 class="text-sm font-semibold text-zinc-100">{{ currentPageTitle }}</h1>
-          <p class="text-xs text-zinc-500">Inventory Management System</p>
+
+        <!-- Desktop collapse toggle -->
+        <button
+            @click="sidebarOpen = !sidebarOpen"
+            class="p-2 rounded-lg text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100 transition-colors hidden lg:flex"
+        >
+          <Menu class="w-4 h-4" />
+        </button>
+
+        <div class="flex-1 min-w-0">
+          <h1 class="text-sm font-semibold text-zinc-100 truncate">{{ currentPageTitle }}</h1>
+          <p class="text-xs text-zinc-500 hidden sm:block">Inventory Management System</p>
         </div>
 
         <!-- Role indicator -->
-        <div class="flex items-center gap-2 px-3 py-1.5 bg-zinc-800 rounded-lg border border-zinc-700">
-          <div :class="roleIndicatorColor" class="w-2 h-2 rounded-full"></div>
-          <span class="text-xs text-zinc-400 capitalize">{{ auth.user?.role }}</span>
+        <div class="flex items-center gap-2 px-2.5 py-1.5 bg-zinc-800 rounded-lg border border-zinc-700">
+          <div :class="roleIndicatorColor" class="w-2 h-2 rounded-full shrink-0"></div>
+          <span class="text-xs text-zinc-400 capitalize hidden sm:block">{{ auth.user?.role }}</span>
         </div>
       </header>
 
       <!-- Page -->
-      <main class="flex-1 overflow-y-auto p-6">
+      <main class="flex-1 overflow-y-auto p-4 lg:p-6">
         <RouterView />
       </main>
     </div>
@@ -96,14 +122,15 @@ import { ref, computed } from 'vue'
 import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router'
 import {
   LayoutDashboard, Package, Tag, Warehouse,
-  BoxesIcon, Users, UserCheck, ShoppingCart, Menu, LogOut,
+  BoxesIcon, Users, UserCheck, ShoppingCart, Menu, LogOut, X,
 } from 'lucide-vue-next'
 import { useAuthStore } from '@/stores/auth'
 
-const auth = useAuthStore()
-const route = useRoute()
-const router = useRouter()
-const sidebarOpen = ref(true)
+const auth        = useAuthStore()
+const route       = useRoute()
+const router      = useRouter()
+const sidebarOpen = ref(true)   // desktop: collapse/expand
+const mobileOpen  = ref(false)  // mobile: slide in/out
 
 const navItems = [
   { to: '/',             label: 'Dashboard',  icon: LayoutDashboard },
@@ -117,7 +144,7 @@ const navItems = [
 ]
 
 const pageTitles: Record<string, string> = {
-  '/':             'Dashboard',
+  '/':             'Dashboard Analytics',
   '/products':     'Manajemen Produk',
   '/categories':   'Manajemen Kategori',
   '/warehouses':   'Manajemen Gudang',

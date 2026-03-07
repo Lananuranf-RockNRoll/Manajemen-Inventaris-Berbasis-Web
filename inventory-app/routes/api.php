@@ -12,11 +12,6 @@ use App\Http\Controllers\Api\TransactionController;
 use App\Http\Controllers\Api\WarehouseController;
 use Illuminate\Support\Facades\Route;
 
-/*
-|--------------------------------------------------------------------------
-| API Routes
-|--------------------------------------------------------------------------
-*/
 
 // ── Public Routes ─────────────────────────────────────────────────────────────
 Route::post('/auth/login',    [AuthController::class, 'login']);
@@ -47,11 +42,11 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Inventory
     Route::prefix('inventory')->group(function () {
-        Route::get('/',                    [InventoryController::class, 'index']);
-        Route::get('/alerts/low-stock',    [InventoryController::class, 'lowStock']);
-        Route::post('/transfer',           [InventoryController::class, 'transfer']);
-        Route::get('/{inventory}',         [InventoryController::class, 'show']);
-        Route::put('/{inventory}',         [InventoryController::class, 'update']);
+        Route::get('/',                 [InventoryController::class, 'index']);
+        Route::get('/alerts/low-stock', [InventoryController::class, 'lowStock']);
+        Route::post('/transfer',        [InventoryController::class, 'transfer']);
+        Route::get('/{inventory}',      [InventoryController::class, 'show']);
+        Route::put('/{inventory}',      [InventoryController::class, 'update']);
     });
 
     // Customers
@@ -65,9 +60,11 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::patch('transactions/{transaction}/status', [TransactionController::class, 'updateStatus']);
 
     // Reports
-    Route::prefix('reports')->group(function () {
-        Route::get('/sales',     [ReportController::class, 'sales']);
-        Route::get('/inventory', [ReportController::class, 'inventory']);
-        Route::get('/export',    [ReportController::class, 'export']);
-    });
+Route::prefix('reports')->group(function () {
+    Route::get('/inventory/excel', [ReportController::class, 'inventoryExcel']);
+    Route::get('/inventory/pdf',   [ReportController::class, 'inventoryPdf']);
+    Route::get('/sales/excel',     [ReportController::class, 'salesExcel']);
+    Route::get('/sales/pdf',       [ReportController::class, 'salesPdf']);
+    Route::get('/dashboard/pdf',   [ReportController::class, 'dashboardPdf']); // ← pindah ke sini
+});
 });

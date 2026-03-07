@@ -1,11 +1,24 @@
 <template>
   <div class="space-y-6">
+
+    <!-- Header + Tombol Print PDF -->
+    <div class="flex items-center justify-between">
+      <div>
+        <h2 class="text-lg font-bold text-zinc-100">Dashboard</h2>
+        <p class="text-xs text-zinc-500">Ringkasan kinerja inventaris</p>
+      </div>
+      <button @click="exportPdf" :disabled="exporting" class="btn-export-pdf">
+        <FileText class="w-3.5 h-3.5" />
+        <span class="text-xs">{{ exporting ? 'Menyiapkan...' : 'Print PDF' }}</span>
+      </button>
+    </div>
+
     <!-- KPI Cards -->
     <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
       <div
-        v-for="card in kpiCards"
-        :key="card.label"
-        class="bg-zinc-900 border border-zinc-800 rounded-xl p-4"
+          v-for="card in kpiCards"
+          :key="card.label"
+          class="bg-zinc-900 border border-zinc-800 rounded-xl p-4"
       >
         <div class="flex items-center justify-between mb-3">
           <span class="text-xs font-medium text-zinc-500">{{ card.label }}</span>
@@ -40,9 +53,9 @@
         <div v-if="loadingTop" class="text-center py-6 text-zinc-500 text-sm">Memuat...</div>
         <div v-else class="space-y-2">
           <div
-            v-for="(p, i) in topProducts.slice(0, 5)"
-            :key="p.id"
-            class="flex items-center gap-3 p-2 rounded-lg hover:bg-zinc-800/50 transition-colors"
+              v-for="(p, i) in topProducts.slice(0, 5)"
+              :key="p.id"
+              class="flex items-center gap-3 p-2 rounded-lg hover:bg-zinc-800/50 transition-colors"
           >
             <span class="w-5 text-xs font-bold text-zinc-600">{{ i + 1 }}</span>
             <div class="flex-1 min-w-0">
@@ -66,9 +79,9 @@
       </div>
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
         <div
-          v-for="item in lowStockItems.slice(0, 6)"
-          :key="item.inventory_id"
-          class="flex items-center gap-3 p-3 bg-zinc-800/50 rounded-lg border border-zinc-700"
+            v-for="item in lowStockItems.slice(0, 6)"
+            :key="item.inventory_id"
+            class="flex items-center gap-3 p-3 bg-zinc-800/50 rounded-lg border border-zinc-700"
         >
           <div class="flex-1 min-w-0">
             <p class="text-xs font-medium text-zinc-200 truncate">{{ item.product_name }}</p>
@@ -81,6 +94,7 @@
         </div>
       </div>
     </div>
+
   </div>
 </template>
 
@@ -92,15 +106,17 @@ import {
   Package,
   AlertTriangle,
   Users,
-  Warehouse,
+  FileText,
 } from 'lucide-vue-next'
 import { dashboardApi } from '@/api/dashboard'
+import { reportsApi, downloadBlob } from '@/api/reports'
 import type { DashboardSummary } from '@/types'
 
-const summary = ref<DashboardSummary | null>(null)
-const topProducts = ref<any[]>([])
+const summary       = ref<DashboardSummary | null>(null)
+const topProducts   = ref<any[]>([])
 const lowStockItems = ref<any[]>([])
-const loadingTop = ref(true)
+const loadingTop    = ref(true)
+const exporting     = ref(false)
 
 const kpiCards = computed(() => {
   if (!summary.value) return []
@@ -143,14 +159,27 @@ const kpiCards = computed(() => {
 const orderStatus = computed(() => {
   if (!summary.value) return []
   return [
-    { label: 'Pending', value: summary.value.pending_orders, color: 'bg-amber-400' },
-    { label: 'Shipped', value: summary.value.shipped_orders, color: 'bg-indigo-400' },
+    { label: 'Pending',  value: summary.value.pending_orders,  color: 'bg-amber-400' },
+    { label: 'Shipped',  value: summary.value.shipped_orders,  color: 'bg-indigo-400' },
     { label: 'Canceled', value: summary.value.canceled_orders, color: 'bg-red-400' },
   ]
 })
 
 function formatNumber(num: number) {
   return new Intl.NumberFormat('id-ID', { maximumFractionDigits: 0 }).format(num)
+}
+
+async function exportPdf() {
+  exporting.value = true
+  try {
+    const res = await reportsApi.dashboardPdf()
+    const date = new Date().toISOString().slice(0, 10)
+    downloadBlob(res.data, `dashboard-${date}.pdf`)
+  } catch {
+    alert('Gagal export PDF dashboard')
+  } finally {
+    exporting.value = false
+  }
 }
 
 onMounted(async () => {
@@ -160,8 +189,8 @@ onMounted(async () => {
       dashboardApi.topProducts(),
       dashboardApi.lowStock(),
     ])
-    summary.value = summaryRes.data.data
-    topProducts.value = topRes.data.data
+    summary.value       = summaryRes.data.data
+    topProducts.value   = topRes.data.data
     lowStockItems.value = lowRes.data.data
   } finally {
     loadingTop.value = false

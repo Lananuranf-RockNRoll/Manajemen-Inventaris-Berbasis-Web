@@ -5,11 +5,26 @@
         <h2 class="text-lg font-bold text-zinc-100">Inventaris</h2>
         <p class="text-xs text-zinc-500">{{ meta?.total ?? 0 }} item stok</p>
       </div>
-      <button v-if="auth.canTransfer" @click="openTransfer" class="btn-primary">
-        <ArrowLeftRight class="w-4 h-4" /> Transfer Stok
-      </button>
+      <div class="flex items-center gap-2">
+        <!-- Export buttons -->
+        <div class="flex items-center gap-1">
+          <button @click="exportExcel" :disabled="exporting" class="btn-export-excel" title="Export Excel">
+            <FileSpreadsheet class="w-3.5 h-3.5" />
+            <span class="text-xs">{{ exporting === 'excel' ? 'Loading...' : 'Excel' }}</span>
+          </button>
+          <button @click="exportPdf" :disabled="exporting" class="btn-export-pdf" title="Export PDF">
+            <FileText class="w-3.5 h-3.5" />
+            <span class="text-xs">{{ exporting === 'pdf' ? 'Loading...' : 'PDF' }}</span>
+          </button>
+        </div>
+        <!-- Transfer button -->
+        <button v-if="auth.canTransfer" @click="openTransfer" class="btn-primary">
+          <ArrowLeftRight class="w-4 h-4" /> Transfer Stok
+        </button>
+      </div>
     </div>
 
+    <!-- Filter -->
     <div class="flex gap-3 flex-wrap">
       <select v-model="warehouseFilter" @change="fetchInventory(1)" class="input-field w-52">
         <option value="">Semua Gudang</option>
@@ -21,47 +36,48 @@
       </label>
     </div>
 
+    <!-- Table -->
     <div class="bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden">
       <div v-if="loading" class="py-16 text-center text-zinc-500 text-sm">Memuat data...</div>
       <table v-else class="w-full">
         <thead>
-          <tr class="border-b border-zinc-800">
-            <th class="th">Produk</th>
-            <th class="th">Gudang</th>
-            <th class="th text-right">Di Tangan</th>
-            <th class="th text-right">Tersedia</th>
-            <th class="th text-right">Min Stok</th>
-            <th class="th text-center">Status</th>
-            <th v-if="auth.canEdit" class="th text-center">Aksi</th>
-          </tr>
+        <tr class="border-b border-zinc-800">
+          <th class="th">Produk</th>
+          <th class="th">Gudang</th>
+          <th class="th text-right">Di Tangan</th>
+          <th class="th text-right">Tersedia</th>
+          <th class="th text-right">Min Stok</th>
+          <th class="th text-center">Status</th>
+          <th v-if="auth.canEdit" class="th text-center">Aksi</th>
+        </tr>
         </thead>
         <tbody>
-          <tr v-for="inv in inventory" :key="inv.id"
+        <tr v-for="inv in inventory" :key="inv.id"
             class="border-b border-zinc-800/50 hover:bg-zinc-800/30 transition-colors">
-            <td class="td">
-              <p class="text-sm font-medium text-zinc-200">{{ inv.product?.name }}</p>
-              <p class="text-xs font-mono text-indigo-400">{{ inv.product?.sku }}</p>
-            </td>
-            <td class="td text-sm text-zinc-400">{{ inv.warehouse?.name }}</td>
-            <td class="td text-right text-sm font-bold text-zinc-200">{{ inv.qty_on_hand }}</td>
-            <td class="td text-right text-sm font-bold" :class="inv.is_low_stock ? 'text-amber-400' : 'text-emerald-400'">
-              {{ inv.qty_available }}
-            </td>
-            <td class="td text-right text-sm text-zinc-500">{{ inv.min_stock }}</td>
-            <td class="td text-center">
-              <span v-if="inv.is_low_stock" class="badge-amber">Stok Rendah</span>
-              <span v-else class="badge-green">Normal</span>
-            </td>
-            <td v-if="auth.canEdit" class="td text-center">
-              <button @click="openUpdate(inv)" class="btn-icon text-zinc-400 hover:text-indigo-400">
-                <Pencil class="w-3.5 h-3.5" />
-              </button>
-            </td>
-          </tr>
+          <td class="td">
+            <p class="text-sm font-medium text-zinc-200">{{ inv.product?.name }}</p>
+            <p class="text-xs font-mono text-indigo-400">{{ inv.product?.sku }}</p>
+          </td>
+          <td class="td text-sm text-zinc-400">{{ inv.warehouse?.name }}</td>
+          <td class="td text-right text-sm font-bold text-zinc-200">{{ inv.qty_on_hand }}</td>
+          <td class="td text-right text-sm font-bold" :class="inv.is_low_stock ? 'text-amber-400' : 'text-emerald-400'">
+            {{ inv.qty_available }}
+          </td>
+          <td class="td text-right text-sm text-zinc-500">{{ inv.min_stock }}</td>
+          <td class="td text-center">
+            <span v-if="inv.is_low_stock" class="badge-amber">Stok Rendah</span>
+            <span v-else class="badge-green">Normal</span>
+          </td>
+          <td v-if="auth.canEdit" class="td text-center">
+            <button @click="openUpdate(inv)" class="btn-icon text-zinc-400 hover:text-indigo-400">
+              <Pencil class="w-3.5 h-3.5" />
+            </button>
+          </td>
+        </tr>
         </tbody>
       </table>
-      <div v-if="auth.isViewer || auth.isStaff && !auth.isManager" class="px-4 py-2 bg-zinc-800/30 border-t border-zinc-800 text-xs text-zinc-500">
-        ℹ️ Anda hanya dapat melihat data inventaris.
+      <div v-if="auth.isViewer" class="px-4 py-2 bg-zinc-800/30 border-t border-zinc-800 text-xs text-zinc-500">
+        ℹ️ Anda login sebagai <strong>viewer</strong> — hanya dapat melihat data.
       </div>
     </div>
 
@@ -70,13 +86,15 @@
       <span>Menampilkan {{ meta.from }}–{{ meta.to }} dari {{ meta.total }}</span>
       <div class="flex gap-1">
         <button v-for="page in visiblePages" :key="page" @click="fetchInventory(page)"
-          :class="['px-3 py-1.5 rounded-lg transition-colors', page === meta.current_page ? 'bg-indigo-600 text-white font-semibold' : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700']">
+                :class="['px-3 py-1.5 rounded-lg transition-colors', page === meta.current_page
+            ? 'bg-indigo-600 text-white font-semibold'
+            : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700']">
           {{ page }}
         </button>
       </div>
     </div>
 
-    <!-- Update Modal -->
+    <!-- Update Stok Modal -->
     <div v-if="showUpdateModal" class="modal-overlay" @click.self="showUpdateModal = false">
       <div class="modal-box max-w-sm">
         <h3 class="text-base font-bold text-zinc-100 mb-1">Update Stok</h3>
@@ -151,28 +169,30 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { ArrowLeftRight, Pencil } from 'lucide-vue-next'
+import { ArrowLeftRight, Pencil, FileSpreadsheet, FileText } from 'lucide-vue-next'
 import { inventoryApi } from '@/api/inventory'
 import { warehousesApi } from '@/api/warehouses'
 import { productsApi } from '@/api/products'
+import { reportsApi, downloadBlob } from '@/api/reports'
 import { useAuthStore } from '@/stores/auth'
 import type { Inventory, Warehouse, Product, PaginationMeta } from '@/types'
 
 const auth = useAuthStore()
-const inventory = ref<Inventory[]>([])
-const warehouses = ref<Warehouse[]>([])
-const products = ref<Product[]>([])
-const meta = ref<PaginationMeta | null>(null)
-const loading = ref(true)
+const inventory   = ref<Inventory[]>([])
+const warehouses  = ref<Warehouse[]>([])
+const products    = ref<Product[]>([])
+const meta        = ref<PaginationMeta | null>(null)
+const loading     = ref(true)
+const exporting   = ref<'excel' | 'pdf' | null>(null)
 const warehouseFilter = ref('')
-const lowStockOnly = ref(false)
-const showUpdateModal = ref(false)
+const lowStockOnly    = ref(false)
+const showUpdateModal   = ref(false)
 const showTransferModal = ref(false)
-const updatingInv = ref<Inventory | null>(null)
-const submitting = ref(false)
-const formError = ref('')
+const updatingInv  = ref<Inventory | null>(null)
+const submitting   = ref(false)
+const formError    = ref('')
 
-const updateForm = ref({ qty_on_hand: 0, min_stock: 10, max_stock: 1000 })
+const updateForm   = ref({ qty_on_hand: 0, min_stock: 10, max_stock: 1000 })
 const transferForm = ref({ product_id: '', from_warehouse_id: '', to_warehouse_id: '', quantity: 1 })
 
 const visiblePages = computed(() => {
@@ -186,25 +206,62 @@ const visiblePages = computed(() => {
 async function fetchInventory(page = 1) {
   loading.value = true
   try {
-    const res = await inventoryApi.list({ page, warehouse_id: warehouseFilter.value || undefined, low_stock: lowStockOnly.value ? true : undefined, per_page: 20 })
+    const res = await inventoryApi.list({
+      page,
+      warehouse_id: warehouseFilter.value || undefined,
+      low_stock: lowStockOnly.value ? true : undefined,
+      per_page: 20,
+    })
     inventory.value = res.data.data
-    meta.value = res.data.meta
+    meta.value      = res.data.meta
   } finally {
     loading.value = false
   }
 }
 
+// ── Export ─────────────────────────────────────────────────────────────────
+async function exportExcel() {
+  exporting.value = 'excel'
+  try {
+    const res = await reportsApi.inventoryExcel(
+        warehouseFilter.value ? { warehouse_id: Number(warehouseFilter.value) } : undefined
+    )
+    const date = new Date().toISOString().slice(0, 10)
+    downloadBlob(res.data, `laporan-inventaris-${date}.xlsx`)
+  } catch {
+    alert('Gagal export Excel')
+  } finally {
+    exporting.value = null
+  }
+}
+
+async function exportPdf() {
+  exporting.value = 'pdf'
+  try {
+    const res = await reportsApi.inventoryPdf(
+        warehouseFilter.value ? { warehouse_id: Number(warehouseFilter.value) } : undefined
+    )
+    const date = new Date().toISOString().slice(0, 10)
+    downloadBlob(res.data, `laporan-inventaris-${date}.pdf`)
+  } catch {
+    alert('Gagal export PDF')
+  } finally {
+    exporting.value = null
+  }
+}
+
+// ── Stok ───────────────────────────────────────────────────────────────────
 function openUpdate(inv: Inventory) {
   if (!auth.canEdit) return
-  updatingInv.value = inv
-  updateForm.value = { qty_on_hand: inv.qty_on_hand, min_stock: inv.min_stock, max_stock: inv.max_stock }
+  updatingInv.value  = inv
+  updateForm.value   = { qty_on_hand: inv.qty_on_hand, min_stock: inv.min_stock, max_stock: inv.max_stock }
   showUpdateModal.value = true
 }
 
 function openTransfer() {
   if (!auth.canTransfer) return
   transferForm.value = { product_id: '', from_warehouse_id: '', to_warehouse_id: '', quantity: 1 }
-  formError.value = ''
+  formError.value    = ''
   showTransferModal.value = true
 }
 
@@ -222,7 +279,7 @@ async function handleUpdate() {
 
 async function handleTransfer() {
   submitting.value = true
-  formError.value = ''
+  formError.value  = ''
   try {
     await inventoryApi.transfer(transferForm.value)
     showTransferModal.value = false
@@ -235,8 +292,12 @@ async function handleTransfer() {
 }
 
 onMounted(async () => {
-  const [, whRes, prodRes] = await Promise.all([fetchInventory(), warehousesApi.list({ per_page: 100 }), productsApi.list({ per_page: 100, active: 1 })])
+  const [, whRes, prodRes] = await Promise.all([
+    fetchInventory(),
+    warehousesApi.list({ per_page: 100 }),
+    productsApi.list({ per_page: 100, active: 1 }),
+  ])
   warehouses.value = whRes.data.data
-  products.value = prodRes.data.data
+  products.value   = prodRes.data.data
 })
 </script>

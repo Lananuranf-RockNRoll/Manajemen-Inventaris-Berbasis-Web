@@ -58,9 +58,26 @@
   .modal-box {
     @apply bg-zinc-900 border border-zinc-800 rounded-2xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto;
   }
+
+  /* Responsive table wrapper — pakai ini untuk tabel di mobile */
+  .table-scroll {
+    @apply overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0;
+  }
 }
 
 * {
   scrollbar-width: thin;
   scrollbar-color: #3f3f46 transparent;
+}
+
+.btn-export-excel {
+  @apply flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold
+  bg-emerald-950 text-emerald-400 border border-emerald-800
+  hover:bg-emerald-900 transition-colors disabled:opacity-50;
+}
+
+.btn-export-pdf {
+  @apply flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold
+  bg-red-950 text-red-400 border border-red-800
+  hover:bg-red-900 transition-colors disabled:opacity-50;
 }
