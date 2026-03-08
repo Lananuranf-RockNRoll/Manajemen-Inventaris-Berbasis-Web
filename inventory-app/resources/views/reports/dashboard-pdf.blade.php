@@ -9,373 +9,291 @@
         body {
             font-family: Arial, sans-serif;
             font-size: 11px;
-            background-color: #09090b;
-            color: #e4e4e7;
+            background-color: #ffffff;
+            color: #1a1a1a;
         }
 
-        /* ── Cover Header ── */
-        .cover {
-            background: linear-gradient(135deg, #1e1b4b 0%, #18181b 50%, #1e1b4b 100%);
-            border-bottom: 3px solid #4f46e5;
-            padding: 32px 40px 24px;
-            margin-bottom: 24px;
+        /* ── Header ── */
+        .header {
+            background-color: #1e3a5f;
+            color: #ffffff;
+            padding: 20px 30px;
         }
-        .cover-top {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-        }
-        .logo {
+        .header-table { width: 100%; }
+        .header-title {
             font-size: 18px;
             font-weight: 700;
             color: #ffffff;
         }
-        .logo span { color: #818cf8; }
-        .cover-meta {
-            text-align: right;
+        .header-sub {
             font-size: 10px;
-            color: #a1a1aa;
-            line-height: 1.8;
-        }
-        .cover-title {
-            margin-top: 20px;
-        }
-        .cover-title h1 {
-            font-size: 22px;
-            font-weight: 700;
-            color: #ffffff;
-        }
-        .cover-title p {
-            font-size: 11px;
-            color: #818cf8;
+            color: #b0c4de;
             margin-top: 4px;
         }
+        .header-meta {
+            text-align: right;
+            font-size: 10px;
+            color: #b0c4de;
+            line-height: 1.8;
+        }
 
-        /* ── Section Title ── */
+        .divider {
+            background-color: #2e86c1;
+            height: 4px;
+            margin-bottom: 20px;
+        }
+
+        /* ── Section ── */
         .section {
-            padding: 0 40px;
-            margin-bottom: 24px;
+            padding: 0 30px;
+            margin-bottom: 20px;
         }
         .section-title {
             font-size: 10px;
             font-weight: 700;
             text-transform: uppercase;
-            letter-spacing: 1.5px;
-            color: #6366f1;
-            border-left: 3px solid #6366f1;
-            padding-left: 10px;
-            margin-bottom: 12px;
+            letter-spacing: 1px;
+            color: #1e3a5f;
+            border-left: 4px solid #2e86c1;
+            padding-left: 8px;
+            margin-bottom: 10px;
         }
 
-        /* ── KPI Cards ── */
-        .kpi-grid {
-            display: flex;
-            gap: 12px;
-            margin-bottom: 0;
+        /* ── KPI ── */
+        .kpi-table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 6px 0;
         }
         .kpi-card {
-            flex: 1;
-            background-color: #18181b;
-            border: 1px solid #3f3f46;
-            border-radius: 10px;
-            padding: 14px 16px;
-            position: relative;
-            overflow: hidden;
+            background-color: #f0f4f8;
+            border: 1px solid #d0dce8;
+            border-top: 3px solid #2e86c1;
+            padding: 12px;
+            text-align: center;
+            width: 25%;
         }
-        .kpi-card::before {
-            content: '';
-            position: absolute;
-            top: 0; left: 0; right: 0;
-            height: 3px;
-        }
-        .kpi-card.indigo::before { background-color: #6366f1; }
-        .kpi-card.emerald::before { background-color: #10b981; }
-        .kpi-card.amber::before { background-color: #f59e0b; }
-        .kpi-card.violet::before { background-color: #8b5cf6; }
-        .kpi-card.blue::before { background-color: #3b82f6; }
-        .kpi-card.red::before { background-color: #ef4444; }
-
+        .kpi-card.green  { border-top-color: #27ae60; }
+        .kpi-card.orange { border-top-color: #e67e22; }
+        .kpi-card.purple { border-top-color: #8e44ad; }
         .kpi-label {
             font-size: 9px;
             text-transform: uppercase;
-            letter-spacing: 0.8px;
-            color: #71717a;
+            color: #666666;
             margin-bottom: 6px;
         }
-        .kpi-value {
-            font-size: 20px;
-            font-weight: 700;
-            color: #ffffff;
-            line-height: 1;
-        }
-        .kpi-value.small { font-size: 14px; }
-        .kpi-sub {
-            font-size: 9px;
-            color: #52525b;
-            margin-top: 4px;
-        }
+        .kpi-value { font-size: 16px; font-weight: 700; color: #1e3a5f; }
+        .kpi-value.small { font-size: 12px; }
 
-        /* ── Order Status Row ── */
-        .status-row {
-            display: flex;
-            gap: 8px;
+        /* ── Status ── */
+        .status-table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 6px 0;
         }
         .status-card {
-            flex: 1;
-            background-color: #18181b;
-            border: 1px solid #3f3f46;
-            border-radius: 8px;
-            padding: 10px 12px;
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            padding: 10px;
             text-align: center;
+            width: 25%;
         }
-        .status-num {
-            font-size: 18px;
-            font-weight: 700;
-        }
-        .status-label {
-            font-size: 9px;
-            color: #71717a;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            margin-top: 3px;
-        }
-        .color-pending    { color: #f59e0b; }
-        .color-processing { color: #3b82f6; }
-        .color-shipped    { color: #8b5cf6; }
-        .color-delivered  { color: #10b981; }
-        .color-canceled   { color: #ef4444; }
+        .status-num { font-size: 20px; font-weight: 700; }
+        .status-label { font-size: 9px; color: #666666; text-transform: uppercase; margin-top: 3px; }
+        .color-pending    { color: #e67e22; }
+        .color-processing { color: #2e86c1; }
+        .color-delivered  { color: #27ae60; }
+        .color-canceled   { color: #e74c3c; }
 
         /* ── Table ── */
-        table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-        thead tr {
-            background-color: #27272a;
-        }
-        thead th {
+        .data-table { width: 100%; border-collapse: collapse; border: 1px solid #d0dce8; }
+        .data-table thead tr { background-color: #1e3a5f; color: #ffffff; }
+        .data-table thead th {
             padding: 9px 12px;
             text-align: left;
             font-size: 10px;
             font-weight: 600;
-            color: #a1a1aa;
             text-transform: uppercase;
             letter-spacing: 0.5px;
-            border-bottom: 1px solid #3f3f46;
         }
-        tbody tr {
-            border-bottom: 1px solid #27272a;
-        }
-        tbody tr:last-child { border-bottom: none; }
-        tbody td {
-            padding: 9px 12px;
+        .data-table tbody tr:nth-child(even) { background-color: #f0f4f8; }
+        .data-table tbody tr:nth-child(odd)  { background-color: #ffffff; }
+        .data-table tbody td {
+            padding: 8px 12px;
             font-size: 11px;
-            color: #d4d4d8;
+            color: #333333;
+            border-bottom: 1px solid #e0e8f0;
         }
-        .rank {
-            font-size: 10px;
-            font-weight: 700;
-            color: #6366f1;
-            width: 28px;
-            text-align: center;
-        }
-        .product-name { font-weight: 600; color: #ffffff; }
-        .product-sku  { font-size: 9px; font-family: monospace; color: #818cf8; margin-top: 2px; }
-        .revenue-val  { font-weight: 700; color: #10b981; }
+        .rank { font-weight: 700; color: #1e3a5f; text-align: center; }
+        .product-name { font-weight: 600; }
+        .product-sku  { font-size: 9px; color: #666666; margin-top: 2px; }
+        .revenue-val  { font-weight: 700; color: #27ae60; }
         .text-right   { text-align: right; }
         .text-center  { text-align: center; }
 
-        /* ── Low Stock ── */
-        .low-stock-table tbody td { color: #d4d4d8; }
-        .badge-habis { background-color: #450a0a; color: #fca5a5; padding: 2px 7px; border-radius: 4px; font-size: 9px; font-weight: 700; }
-        .badge-rendah { background-color: #451a03; color: #fcd34d; padding: 2px 7px; border-radius: 4px; font-size: 9px; font-weight: 700; }
-
-        /* ── Monthly Sales Table ── */
-        .bar-cell { width: 120px; }
-        .bar-bg {
-            background-color: #27272a;
-            border-radius: 3px;
-            height: 10px;
-            overflow: hidden;
-        }
-        .bar-fill {
-            background: linear-gradient(90deg, #4f46e5, #818cf8);
-            height: 10px;
-            border-radius: 3px;
-        }
+        /* ── Bar ── */
+        .bar-bg   { background-color: #dee2e6; height: 8px; width: 100px; }
+        .bar-fill { background-color: #2e86c1; height: 8px; }
 
         /* ── Footer ── */
-        .footer {
-            margin-top: 32px;
-            padding: 16px 40px;
-            border-top: 1px solid #27272a;
-            display: flex;
-            justify-content: space-between;
-            font-size: 9px;
-            color: #52525b;
-        }
-
-        /* ── Two column layout ── */
-        .two-col {
-            display: flex;
-            gap: 16px;
-        }
-        .two-col > div { flex: 1; }
-
-        .table-wrapper {
-            background-color: #18181b;
-            border: 1px solid #3f3f46;
-            border-radius: 10px;
-            overflow: hidden;
-        }
+        .footer { margin-top: 24px; padding: 12px 30px; border-top: 2px solid #1e3a5f; }
+        .footer-table { width: 100%; }
+        .footer-left  { font-size: 9px; color: #666666; }
+        .footer-right { text-align: right; font-size: 9px; color: #666666; }
     </style>
 </head>
 <body>
 
-    {{-- ═══ COVER HEADER ═══ --}}
-    <div class="cover">
-        <div class="cover-top">
-            <div class="logo">Sistem <span>Inventaris</span></div>
-            <div class="cover-meta">
-                <div>Dicetak: {{ now()->format('d F Y, H:i') }} WIB</div>
-                <div>Periode: {{ now()->format('Y') }}</div>
-                <div>lananuranf</div>
-            </div>
-        </div>
-        <div class="cover-title">
-            <h1>Laporan Dashboard</h1>
-            <p>Ringkasan Kinerja Sistem Informasi Manajemen Inventaris</p>
-        </div>
+    {{-- HEADER --}}
+    <div class="header">
+        <table class="header-table">
+            <tr>
+                <td>
+                    <div class="header-title">Sistem Informasi Manajemen Inventaris</div>
+                    <div class="header-sub">Laporan Dashboard &mdash; Ringkasan Kinerja</div>
+                </td>
+                <td class="header-meta">
+                    <div>Dicetak: {{ now()->format('d F Y, H:i') }} WIB</div>
+                    <div>Periode: {{ now()->format('Y') }}</div>
+                    <div>lananuranf</div>
+                </td>
+            </tr>
+        </table>
     </div>
+    <div class="divider"></div>
 
-    {{-- ═══ KPI UTAMA ═══ --}}
+    {{-- KPI --}}
     <div class="section">
-        <div class="section-title">Indikator Kinerja Utama (KPI)</div>
-        <div class="kpi-grid">
-            <div class="kpi-card indigo">
-                <div class="kpi-label">Total Revenue</div>
-                <div class="kpi-value small">Rp {{ number_format($summary['total_revenue'] ?? 0, 0, ',', '.') }}</div>
-                <div class="kpi-sub">Semua transaksi selesai</div>
-            </div>
-            <div class="kpi-card emerald">
-                <div class="kpi-label">Total Order</div>
-                <div class="kpi-value">{{ number_format($summary['total_orders'] ?? 0) }}</div>
-                <div class="kpi-sub">Seluruh transaksi</div>
-            </div>
-            <div class="kpi-card amber">
-                <div class="kpi-label">Total Produk</div>
-                <div class="kpi-value">{{ number_format($summary['total_products'] ?? 0) }}</div>
-                <div class="kpi-sub">Produk aktif</div>
-            </div>
-            <div class="kpi-card violet">
-                <div class="kpi-label">Total Customer</div>
-                <div class="kpi-value">{{ number_format($summary['total_customers'] ?? 0) }}</div>
-                <div class="kpi-sub">Customer terdaftar</div>
-            </div>
-        </div>
+        <div class="section-title">Indikator Kinerja Utama</div>
+        <table class="kpi-table">
+            <tr>
+                <td class="kpi-card">
+                    <div class="kpi-label">Total Revenue</div>
+                    <div class="kpi-value small">Rp {{ number_format($summary['total_revenue'] ?? 0, 0, ',', '.') }}</div>
+                </td>
+                <td class="kpi-card green">
+                    <div class="kpi-label">Total Order</div>
+                    <div class="kpi-value">{{ number_format($summary['total_orders'] ?? 0) }}</div>
+                </td>
+                <td class="kpi-card orange">
+                    <div class="kpi-label">Total Produk</div>
+                    <div class="kpi-value">{{ number_format($summary['total_products'] ?? 0) }}</div>
+                </td>
+                <td class="kpi-card purple">
+                    <div class="kpi-label">Total Customer</div>
+                    <div class="kpi-value">{{ number_format($summary['total_customers'] ?? 0) }}</div>
+                </td>
+            </tr>
+        </table>
     </div>
 
-    {{-- ═══ STATUS ORDER ═══ --}}
+    {{-- STATUS ORDER --}}
     <div class="section">
         <div class="section-title">Status Order</div>
-        <div class="status-row">
-            <div class="status-card">
-                <div class="status-num color-pending">{{ $summary['pending_orders'] ?? 0 }}</div>
-                <div class="status-label">Pending</div>
-            </div>
-            <div class="status-card">
-                <div class="status-num color-processing">{{ $summary['shipped_orders'] ?? 0 }}</div>
-                <div class="status-label">Shipped</div>
-            </div>
-            <div class="status-card">
-                <div class="status-num color-delivered">{{ $summary['total_orders'] ?? 0 }}</div>
-                <div class="status-label">Total Order</div>
-            </div>
-            <div class="status-card">
-                <div class="status-num color-canceled">{{ $summary['canceled_orders'] ?? 0 }}</div>
-                <div class="status-label">Canceled</div>
-            </div>
-        </div>
+        <table class="status-table">
+            <tr>
+                <td class="status-card">
+                    <div class="status-num color-pending">{{ $summary['pending_orders'] ?? 0 }}</div>
+                    <div class="status-label">Pending</div>
+                </td>
+                <td class="status-card">
+                    <div class="status-num color-processing">{{ $summary['shipped_orders'] ?? 0 }}</div>
+                    <div class="status-label">Shipped</div>
+                </td>
+                <td class="status-card">
+                    <div class="status-num color-delivered">{{ $summary['total_orders'] ?? 0 }}</div>
+                    <div class="status-label">Total Order</div>
+                </td>
+                <td class="status-card">
+                    <div class="status-num color-canceled">{{ $summary['canceled_orders'] ?? 0 }}</div>
+                    <div class="status-label">Canceled</div>
+                </td>
+            </tr>
+        </table>
     </div>
 
-    {{-- ═══ TOP 5 PRODUK TERLARIS ═══ --}}
+    {{-- TOP 5 PRODUK --}}
     <div class="section">
         <div class="section-title">Top 5 Produk Terlaris</div>
-        <div class="table-wrapper">
-            <table>
-                <thead>
-                    <tr>
-                        <th class="text-center" style="width:40px">#</th>
-                        <th>Produk</th>
-                        <th>Kategori</th>
-                        <th class="text-right">Total Qty Terjual</th>
-                        <th class="text-right">Total Revenue</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @forelse ($topProducts as $i => $p)
-                    <tr>
-                        <td class="rank">{{ $i + 1 }}</td>
-                        <td>
-                            <div class="product-name">{{ $p['name'] }}</div>
-                            <div class="product-sku">{{ $p['sku'] }}</div>
-                        </td>
-                        <td style="color:#a1a1aa; font-size:10px">{{ $p['category_name'] ?? '-' }}</td>
-                        <td class="text-right" style="font-weight:700; color:#e4e4e7">{{ number_format($p['total_qty']) }} unit</td>
-                        <td class="text-right revenue-val">Rp {{ number_format($p['total_revenue'], 0, ',', '.') }}</td>
-                    </tr>
-                    @empty
-                    <tr><td colspan="5" class="text-center" style="color:#52525b; padding:20px">Belum ada data transaksi</td></tr>
-                    @endforelse
-                </tbody>
-            </table>
-        </div>
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th class="text-center" style="width:36px">#</th>
+                    <th>Produk</th>
+                    <th>Kategori</th>
+                    <th class="text-right">Qty Terjual</th>
+                    <th class="text-right">Total Revenue</th>
+                </tr>
+            </thead>
+            <tbody>
+                @forelse ($topProducts as $i => $p)
+                <tr>
+                    <td class="rank text-center">{{ $i + 1 }}</td>
+                    <td>
+                        <div class="product-name">{{ $p['name'] }}</div>
+                        <div class="product-sku">{{ $p['sku'] }}</div>
+                    </td>
+                    <td style="font-size:10px; color:#555555">{{ $p['category_name'] ?? '-' }}</td>
+                    <td class="text-right" style="font-weight:600">{{ number_format($p['total_qty']) }} unit</td>
+                    <td class="text-right revenue-val">Rp {{ number_format($p['total_revenue'], 0, ',', '.') }}</td>
+                </tr>
+                @empty
+                <tr>
+                    <td colspan="5" class="text-center" style="color:#999999; padding:16px">Belum ada data transaksi</td>
+                </tr>
+                @endforelse
+            </tbody>
+        </table>
     </div>
 
-    {{-- ═══ RINGKASAN PENJUALAN PER BULAN ═══ --}}
+    {{-- PENJUALAN PER BULAN --}}
     <div class="section">
         <div class="section-title">Ringkasan Penjualan Per Bulan ({{ now()->year }})</div>
-        <div class="table-wrapper">
-            <table>
-                <thead>
-                    <tr>
-                        <th>Bulan</th>
-                        <th class="text-right">Jumlah Order</th>
-                        <th class="text-right">Total Revenue</th>
-                        <th class="bar-cell">Proporsi</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @php
-                        $months = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
-                        $maxRev = collect($monthlySales)->max('revenue') ?: 1;
-                    @endphp
-                    @foreach ($monthlySales as $row)
-                    <tr>
-                        <td style="font-weight:600; color:#e4e4e7">{{ $months[($row['month'] ?? 1) - 1] }}</td>
-                        <td class="text-right">{{ number_format($row['orders']) }}</td>
-                        <td class="text-right" style="color:#10b981; font-weight:600">
-                            Rp {{ number_format($row['revenue'] / 1000000, 1) }}jt
-                        </td>
-                        <td class="bar-cell">
-                            <div class="bar-bg">
-                                <div class="bar-fill" style="width: {{ round(($row['revenue'] / $maxRev) * 100) }}%"></div>
-                            </div>
-                        </td>
-                    </tr>
-                    @endforeach
-                    @if (empty($monthlySales))
-                    <tr><td colspan="4" class="text-center" style="color:#52525b; padding:16px">Belum ada data penjualan</td></tr>
-                    @endif
-                </tbody>
-            </table>
-        </div>
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th style="width:80px">Bulan</th>
+                    <th class="text-right">Jumlah Order</th>
+                    <th class="text-right">Total Revenue</th>
+                    <th style="width:120px">Proporsi</th>
+                </tr>
+            </thead>
+            <tbody>
+                @php
+                    $months = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
+                    $maxRev = collect($monthlySales)->max('revenue') ?: 1;
+                @endphp
+                @foreach ($monthlySales as $row)
+                <tr>
+                    <td style="font-weight:600">{{ $months[($row['month'] ?? 1) - 1] }}</td>
+                    <td class="text-right">{{ number_format($row['orders']) }}</td>
+                    <td class="text-right" style="color:#27ae60; font-weight:600">
+                        Rp {{ number_format($row['revenue'] / 1000000, 1) }}jt
+                    </td>
+                    <td>
+                        <div class="bar-bg">
+                            <div class="bar-fill" style="width: {{ round(($row['revenue'] / $maxRev) * 100) }}px"></div>
+                        </div>
+                    </td>
+                </tr>
+                @endforeach
+                @if (empty($monthlySales))
+                <tr>
+                    <td colspan="4" class="text-center" style="color:#999999; padding:16px">Belum ada data penjualan</td>
+                </tr>
+                @endif
+            </tbody>
+        </table>
     </div>
 
-    {{-- ═══ FOOTER ═══ --}}
+    {{-- FOOTER --}}
     <div class="footer">
-        <span>Sistem Informasi Manajemen Inventaris</span>
-        <span>Laporan otomatis — {{ now()->format('d/m/Y H:i') }} WIB</span>
+        <table class="footer-table">
+            <tr>
+                <td class="footer-left">Sistem Informasi Manajemen Inventaris</td>
+                <td class="footer-right">Laporan otomatis &mdash; {{ now()->format('d/m/Y H:i') }} WIB</td>
+            </tr>
+        </table>
     </div>
 
 </body>
