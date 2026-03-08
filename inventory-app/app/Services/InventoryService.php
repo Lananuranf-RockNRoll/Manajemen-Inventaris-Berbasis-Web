@@ -10,57 +10,42 @@ use Illuminate\Support\Facades\DB;
 class InventoryService
 {
     /**
-     * Kurangi stok saat order di-ship.
-     *
      * @throws Exception
      */
-public function deductStock(Transaction $transaction): void
-{
-    DB::transaction(function () use ($transaction) {
-        foreach ($transaction->items as $item) {
-            $inventory = Inventory::where([
-                'product_id'   => $item->product_id,
-                'warehouse_id' => $transaction->warehouse_id,
-            ])->lockForUpdate()->first();
-
-            // Kalau inventory tidak ada, throw pesan yang jelas
-            if (!$inventory) {
-                throw new Exception(
-                    "Produk tidak tersedia di gudang ini. " .
-                    "Silakan cek inventaris terlebih dahulu."
+    public function deductStock(Transaction $transaction): void
+    {
+        DB::transaction(function () use ($transaction): void {
+            foreach ($transaction->items as $item) {
+                $inventory = $this->findInventoryOrFail(
+                    productId: $item->product_id,
+                    warehouseId: $transaction->warehouse_id,
+                    notFoundMessage: 'Produk tidak tersedia di gudang ini. Silakan cek inventaris terlebih dahulu.'
                 );
-            }
 
-            if ($inventory->qty_available < $item->quantity) {
-                throw new Exception(
-                    "Stok tidak cukup untuk produk: {$item->product->name}. " .
-                    "Tersedia: {$inventory->qty_available}, Dibutuhkan: {$item->quantity}"
+                $this->ensureSufficientStock(
+                    inventory: $inventory,
+                    requiredQty: $item->quantity,
+                    errorMessage: "Stok tidak cukup untuk produk: {$item->product->name}. Tersedia: {$inventory->qty_available}, Dibutuhkan: {$item->quantity}"
                 );
+
+                $inventory->decrement('qty_on_hand', $item->quantity);
             }
+        });
+    }
 
-            $inventory->decrement('qty_on_hand', $item->quantity);
-        }
-    });
-}
-
-    /**
-     * Kembalikan stok saat order dibatalkan.
-     */
     public function restoreStock(Transaction $transaction): void
     {
-        DB::transaction(function () use ($transaction) {
+        DB::transaction(function () use ($transaction): void {
             foreach ($transaction->items as $item) {
-                Inventory::where([
-                    'product_id'   => $item->product_id,
-                    'warehouse_id' => $transaction->warehouse_id,
-                ])->increment('qty_on_hand', $item->quantity);
+                Inventory::query()
+                    ->where('product_id', $item->product_id)
+                    ->where('warehouse_id', $transaction->warehouse_id)
+                    ->increment('qty_on_hand', $item->quantity);
             }
         });
     }
 
     /**
-     * Transfer stok antar gudang.
-     *
      * @throws Exception
      */
     public function transferStock(
@@ -73,38 +58,68 @@ public function deductStock(Transaction $transaction): void
             throw new Exception('Gudang asal dan tujuan tidak boleh sama.');
         }
 
-        DB::transaction(function () use ($productId, $fromWarehouseId, $toWarehouseId, $qty) {
-            $source = Inventory::where([
-                'product_id'   => $productId,
-                'warehouse_id' => $fromWarehouseId,
-            ])->lockForUpdate()->firstOrFail();
+        DB::transaction(function () use ($productId, $fromWarehouseId, $toWarehouseId, $qty): void {
+            $sourceInventory = $this->findInventoryOrFail(
+                productId: $productId,
+                warehouseId: $fromWarehouseId,
+                notFoundMessage: 'Stok sumber tidak ditemukan.'
+            );
 
-            if ($source->qty_available < $qty) {
-                throw new Exception(
-                    "Stok tidak cukup untuk transfer. " .
-                    "Tersedia: {$source->qty_available}, Dibutuhkan: {$qty}"
-                );
+            $this->ensureSufficientStock(
+                inventory: $sourceInventory,
+                requiredQty: $qty,
+                errorMessage: "Stok tidak cukup untuk transfer. Tersedia: {$sourceInventory->qty_available}, Dibutuhkan: {$qty}"
+            );
+
+            $sourceInventory->decrement('qty_on_hand', $qty);
+
+            $destinationInventory = Inventory::query()
+                ->where('product_id', $productId)
+                ->where('warehouse_id', $toWarehouseId)
+                ->first();
+
+            if ($destinationInventory) {
+                $destinationInventory->increment('qty_on_hand', $qty);
+
+                return;
             }
 
-            $source->decrement('qty_on_hand', $qty);
-
-            $destination = Inventory::where([
-                'product_id'   => $productId,
+            Inventory::create([
+                'product_id' => $productId,
                 'warehouse_id' => $toWarehouseId,
-            ])->first();
-
-            if ($destination) {
-                $destination->increment('qty_on_hand', $qty);
-            } else {
-                Inventory::create([
-                    'product_id'   => $productId,
-                    'warehouse_id' => $toWarehouseId,
-                    'qty_on_hand'  => $qty,
-                    'qty_reserved' => 0,
-                    'min_stock'    => $source->min_stock,
-                    'max_stock'    => $source->max_stock,
-                ]);
-            }
+                'qty_on_hand' => $qty,
+                'qty_reserved' => 0,
+                'min_stock' => $sourceInventory->min_stock,
+                'max_stock' => $sourceInventory->max_stock,
+            ]);
         });
+    }
+
+    /**
+     * @throws Exception
+     */
+    private function findInventoryOrFail(int $productId, int $warehouseId, string $notFoundMessage): Inventory
+    {
+        $inventory = Inventory::query()
+            ->where('product_id', $productId)
+            ->where('warehouse_id', $warehouseId)
+            ->lockForUpdate()
+            ->first();
+
+        if (! $inventory) {
+            throw new Exception($notFoundMessage);
+        }
+
+        return $inventory;
+    }
+
+    /**
+     * @throws Exception
+     */
+    private function ensureSufficientStock(Inventory $inventory, int $requiredQty, string $errorMessage): void
+    {
+        if ($inventory->qty_available < $requiredQty) {
+            throw new Exception($errorMessage);
+        }
     }
 }

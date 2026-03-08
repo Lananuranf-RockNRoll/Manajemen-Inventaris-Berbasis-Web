@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -26,27 +27,30 @@ class Product extends Model
     {
         return [
             'standard_cost' => 'decimal:2',
-            'list_price'    => 'decimal:2',
-            'is_active'     => 'boolean',
+            'list_price' => 'decimal:2',
+            'is_active' => 'boolean',
         ];
     }
 
-    // ── Computed Attributes ─────────────────────────────────────────────────────
     public function getProfitMarginAttribute(): float
     {
-        return round((float) $this->list_price - (float) $this->standard_cost, 2);
+        $listPrice = (float) $this->list_price;
+        $standardCost = (float) $this->standard_cost;
+
+        return round($listPrice - $standardCost, 2);
     }
 
     public function getProfitPercentageAttribute(): float
     {
-        if ((float) $this->standard_cost == 0) {
-            return 0;
+        $standardCost = (float) $this->standard_cost;
+
+        if ($standardCost === 0.0) {
+            return 0.0;
         }
 
-        return round(($this->profit_margin / (float) $this->standard_cost) * 100, 2);
+        return round(($this->profit_margin / $standardCost) * 100, 2);
     }
 
-    // ── Relationships ───────────────────────────────────────────────────────────
     public function category(): BelongsTo
     {
         return $this->belongsTo(Category::class);
@@ -62,23 +66,24 @@ class Product extends Model
         return $this->hasMany(TransactionItem::class);
     }
 
-    // ── Scopes ──────────────────────────────────────────────────────────────────
-    public function scopeActive($query)
+    public function scopeActive(Builder $query): Builder
     {
         return $query->where('is_active', true);
     }
 
-    public function scopeByCategory($query, int $categoryId)
+    public function scopeByCategory(Builder $query, int $categoryId): Builder
     {
         return $query->where('category_id', $categoryId);
     }
 
-    public function scopeSearch($query, string $term)
+    public function scopeSearch(Builder $query, string $term): Builder
     {
-        return $query->where(function ($q) use ($term) {
-            $q->where('name', 'LIKE', "%{$term}%")
-              ->orWhere('sku', 'LIKE', "%{$term}%")
-              ->orWhere('description', 'LIKE', "%{$term}%");
+        $keyword = "%{$term}%";
+
+        return $query->where(function (Builder $subQuery) use ($keyword): void {
+            $subQuery->where('name', 'LIKE', $keyword)
+                ->orWhere('sku', 'LIKE', $keyword)
+                ->orWhere('description', 'LIKE', $keyword);
         });
     }
 }

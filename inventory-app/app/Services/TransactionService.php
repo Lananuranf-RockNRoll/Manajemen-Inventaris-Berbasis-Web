@@ -10,87 +10,107 @@ use Illuminate\Support\Facades\DB;
 
 class TransactionService
 {
+    private const STATUS_PENDING = 'pending';
+    private const STATUS_PROCESSING = 'processing';
+    private const STATUS_SHIPPED = 'shipped';
+    private const STATUS_DELIVERED = 'delivered';
+    private const STATUS_CANCELED = 'canceled';
+
+    private const ALLOWED_TRANSITIONS = [
+        self::STATUS_PENDING => [self::STATUS_PROCESSING, self::STATUS_CANCELED],
+        self::STATUS_PROCESSING => [self::STATUS_SHIPPED, self::STATUS_CANCELED],
+        self::STATUS_SHIPPED => [self::STATUS_DELIVERED, self::STATUS_CANCELED],
+        self::STATUS_DELIVERED => [],
+        self::STATUS_CANCELED => [],
+    ];
+
     /**
-     * Buat order baru beserta item-itemnya.
-     *
      * @throws Exception
      */
     public function createOrder(array $data): Transaction
     {
-        return DB::transaction(function () use ($data) {
+        return DB::transaction(function () use ($data): Transaction {
             $items = $data['items'];
             unset($data['items']);
 
-            // Hitung total_amount dari items
-            $totalAmount = collect($items)->sum(
-                fn ($item) => $item['quantity'] * $item['unit_price']
-            );
+            $transaction = Transaction::create([
+                ...$data,
+                'total_amount' => $this->calculateTotalAmount($items),
+            ]);
 
-            $transaction = Transaction::create(array_merge($data, [
-                'total_amount' => $totalAmount,
-            ]));
-
-            foreach ($items as $item) {
-                $transaction->items()->create([
-                    'product_id' => $item['product_id'],
-                    'quantity'   => $item['quantity'],
-                    'unit_price' => $item['unit_price'],
-                ]);
-            }
+            $this->createTransactionItems($transaction, $items);
 
             return $transaction;
         });
     }
 
     /**
-     * Update status transaksi dengan business logic:
-     * - shipped  → kurangi stok inventory
-     * - canceled → kembalikan stok inventory (hanya jika sebelumnya shipped)
-     *
      * @throws Exception
      */
     public function updateStatus(Transaction $transaction, string $newStatus): Transaction
     {
-        $oldStatus = $transaction->status;
+        $currentStatus = $transaction->status;
 
-        if ($oldStatus === $newStatus) {
+        if ($currentStatus === $newStatus) {
             return $transaction;
         }
 
-        // Validasi transisi status yang diizinkan
-        $allowedTransitions = [
-            'pending'    => ['processing', 'canceled'],
-            'processing' => ['shipped', 'canceled'],
-            'shipped'    => ['delivered', 'canceled'],
-            'delivered'  => [],
-            'canceled'   => [],
-        ];
+        $this->ensureValidStatusTransition($currentStatus, $newStatus);
 
-        if (! in_array($newStatus, $allowedTransitions[$oldStatus] ?? [])) {
-            throw new Exception(
-                "Transisi status dari '{$oldStatus}' ke '{$newStatus}' tidak diizinkan."
-            );
-        }
-
-        DB::transaction(function () use ($transaction, $newStatus, $oldStatus) {
-            $updateData = ['status' => $newStatus];
-
-            if ($newStatus === 'shipped') {
-                $updateData['shipped_date'] = now()->toDateString();
-            }
-
-            $transaction->update($updateData);
+        DB::transaction(function () use ($transaction, $currentStatus, $newStatus): void {
+            $transaction->update($this->buildStatusUpdatePayload($newStatus));
             $transaction->load('items.product');
 
-            if ($newStatus === 'shipped') {
+            if ($newStatus === self::STATUS_SHIPPED) {
                 event(new OrderShipped($transaction));
             }
 
-            if ($newStatus === 'canceled' && $oldStatus === 'shipped') {
+            if ($currentStatus === self::STATUS_SHIPPED && $newStatus === self::STATUS_CANCELED) {
                 event(new OrderCanceled($transaction));
             }
         });
 
         return $transaction->fresh();
+    }
+
+    private function calculateTotalAmount(array $items): float
+    {
+        return (float) collect($items)->sum(
+            fn (array $item): float => $item['quantity'] * $item['unit_price']
+        );
+    }
+
+    private function createTransactionItems(Transaction $transaction, array $items): void
+    {
+        foreach ($items as $item) {
+            $transaction->items()->create([
+                'product_id' => $item['product_id'],
+                'quantity' => $item['quantity'],
+                'unit_price' => $item['unit_price'],
+            ]);
+        }
+    }
+
+    /**
+     * @throws Exception
+     */
+    private function ensureValidStatusTransition(string $currentStatus, string $newStatus): void
+    {
+        $allowedStatuses = self::ALLOWED_TRANSITIONS[$currentStatus] ?? [];
+
+        if (! in_array($newStatus, $allowedStatuses, true)) {
+            throw new Exception("Transisi status dari '{$currentStatus}' ke '{$newStatus}' tidak diizinkan.");
+        }
+    }
+
+    private function buildStatusUpdatePayload(string $newStatus): array
+    {
+        $payload = ['status' => $newStatus];
+
+        if ($newStatus === self::STATUS_SHIPPED) {
+            $payload['shipped_date'] = now()->toDateString();
+        }
+
+        return $payload;
     }
 }
