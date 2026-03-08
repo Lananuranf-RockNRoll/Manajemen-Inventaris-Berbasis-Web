@@ -18,7 +18,7 @@ function resetTimer() {
       auth.logout()
       router.push('/login')
     }
-  }, 5 * 60 * 1000) // 3 menit
+  }, 3 * 60 * 1000) // 3 menit
 }
 
 onMounted(() => {
