@@ -38,7 +38,7 @@ class ReportController extends Controller
             : null;
 
         $pdf = Pdf::loadView('reports.inventory-pdf', compact('items', 'warehouseName'))
-            ->setPaper('a4', 'landscape');
+            ->setPaper('a4');
 
         return $pdf->download('laporan-inventaris-' . now()->format('Ymd-His') . '.pdf');
     }
@@ -118,7 +118,7 @@ class ReportController extends Controller
 
         $pdf = Pdf::loadView('reports.dashboard-pdf', compact(
             'summary', 'topProducts', 'monthlySales'
-        ))->setPaper('a4', 'portrait');
+        ))->setPaper('a4');
 
         return $pdf->download('dashboard-' . now()->format('Ymd-His') . '.pdf');
     }
