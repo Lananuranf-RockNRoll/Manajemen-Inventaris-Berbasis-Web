@@ -14,26 +14,34 @@ class InventoryService
      *
      * @throws Exception
      */
-    public function deductStock(Transaction $transaction): void
-    {
-        DB::transaction(function () use ($transaction) {
-            foreach ($transaction->items as $item) {
-                $inventory = Inventory::where([
-                    'product_id'   => $item->product_id,
-                    'warehouse_id' => $transaction->warehouse_id,
-                ])->lockForUpdate()->firstOrFail();
+public function deductStock(Transaction $transaction): void
+{
+    DB::transaction(function () use ($transaction) {
+        foreach ($transaction->items as $item) {
+            $inventory = Inventory::where([
+                'product_id'   => $item->product_id,
+                'warehouse_id' => $transaction->warehouse_id,
+            ])->lockForUpdate()->first();
 
-                if ($inventory->qty_available < $item->quantity) {
-                    throw new Exception(
-                        "Stok tidak cukup untuk produk: {$item->product->name}. " .
-                        "Tersedia: {$inventory->qty_available}, Dibutuhkan: {$item->quantity}"
-                    );
-                }
-
-                $inventory->decrement('qty_on_hand', $item->quantity);
+            // Kalau inventory tidak ada, throw pesan yang jelas
+            if (!$inventory) {
+                throw new Exception(
+                    "Produk tidak tersedia di gudang ini. " .
+                    "Silakan cek inventaris terlebih dahulu."
+                );
             }
-        });
-    }
+
+            if ($inventory->qty_available < $item->quantity) {
+                throw new Exception(
+                    "Stok tidak cukup untuk produk: {$item->product->name}. " .
+                    "Tersedia: {$inventory->qty_available}, Dibutuhkan: {$item->quantity}"
+                );
+            }
+
+            $inventory->decrement('qty_on_hand', $item->quantity);
+        }
+    });
+}
 
     /**
      * Kembalikan stok saat order dibatalkan.
