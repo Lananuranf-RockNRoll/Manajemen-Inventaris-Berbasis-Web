@@ -1,4 +1,4 @@
-import api from './index.ts'
+import api from './index'
 
 export const authApi = {
   login: (email: string, password: string) =>

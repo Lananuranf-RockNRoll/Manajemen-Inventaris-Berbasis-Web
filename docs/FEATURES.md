@@ -1,380 +1,226 @@
-# ✨ Dokumentasi Fitur Aplikasi
+# ✨ Features Documentation
 
-Dokumen ini menjelaskan setiap fitur yang tersedia dalam Sistem Informasi Manajemen Inventaris, lengkap dengan deskripsi fungsi dan alur penggunaannya.
-
----
-
-## Hak Akses per Fitur
-
-| Fitur | Viewer | Staff | Manager | Admin |
-|-------|:------:|:-----:|:-------:|:-----:|
-| Dashboard | ✅ Lihat | ✅ Lihat | ✅ Lihat | ✅ Lihat |
-| Manajemen Barang | ✅ Lihat | ✅ Tambah | ✅ Tambah/Edit | ✅ Full |
-| Manajemen Kategori | ✅ Lihat | ✅ Tambah | ✅ Tambah/Edit | ✅ Full |
-| Manajemen Gudang | ✅ Lihat | ✅ Tambah | ✅ Tambah/Edit | ✅ Full |
-| Manajemen Stok | ✅ Lihat | ✅ Lihat | ✅ Update/Transfer | ✅ Full |
-| Manajemen Customer | ✅ Lihat | ✅ Tambah | ✅ Tambah/Edit | ✅ Full |
-| Manajemen Karyawan | ✅ Lihat | ✅ Tambah | ✅ Tambah/Edit | ✅ Full |
-| Manajemen Transaksi | ✅ Lihat | ✅ Buat order | ✅ Buat/Update status | ✅ Full |
-| Laporan | ✅ Lihat | ✅ Lihat | ✅ Lihat/Export | ✅ Full |
+Dokumentasi lengkap semua fitur InvenSys.
 
 ---
 
-## 1. Dashboard
+## 1. 📊 Dashboard
 
-### Deskripsi
-Dashboard adalah halaman utama yang ditampilkan setelah pengguna berhasil login. Halaman ini menyajikan ringkasan kondisi inventaris secara menyeluruh dalam bentuk kartu KPI (Key Performance Indicators), grafik, dan tabel ringkas.
+Halaman utama dengan ringkasan bisnis real-time.
 
-### Komponen Dashboard
+### KPI Cards
+- **Total Produk Aktif** — jumlah produk dengan `is_active = true`
+- **Total Gudang** — jumlah warehouse aktif
+- **Total Pelanggan** — jumlah customer terdaftar
+- **Total Karyawan** — jumlah employee aktif
+- **Transaksi Pending** — order yang belum diproses
+- **Revenue Bulan Ini** — total `total_amount` transaksi `delivered` bulan ini
 
-**Kartu KPI Utama:**
-- **Total Revenue** — Total pendapatan dari seluruh transaksi delivered
-- **Total Order** — Jumlah keseluruhan transaksi yang tercatat
-- **Total Produk** — Jumlah produk aktif dalam sistem
-- **Total Customer** — Jumlah customer yang terdaftar
+### Grafik Penjualan
+- Line chart 12 bulan terakhir menggunakan Chart.js
+- Data: jumlah transaksi `delivered` dan total revenue per bulan
 
-**Panel Status Order:**
-- Menampilkan jumlah order berdasarkan status: Pending, Shipped, Canceled
-- Memudahkan manajer memantau pipeline penjualan secara cepat
+### Alert Stok Rendah
+- List produk dengan `quantity < min_quantity`
+- Klik langsung menuju halaman inventaris
 
-**Top 5 Produk Terlaris:**
-- Daftar 5 produk dengan revenue tertinggi
-- Menampilkan nama produk, kategori, jumlah unit terjual, dan total revenue
-
-**Peringatan Stok Rendah:**
-- Muncul otomatis jika ada produk dengan stok di bawah batas minimum
-- Menampilkan nama produk, lokasi gudang, stok tersedia, dan batas minimum
-- Berguna untuk perencanaan pengadaan barang
-
-### Alur Penggunaan
-1. Login ke sistem dengan akun apapun
-2. Dashboard ditampilkan otomatis sebagai halaman pertama
-3. Pantau kartu KPI untuk kondisi bisnis keseluruhan
-4. Periksa panel stok rendah dan lakukan restocking jika diperlukan
-5. Gunakan top produk sebagai referensi produk unggulan
+### Recent Transactions
+- 5 transaksi terbaru dengan status badge berwarna
+- Link ke detail transaksi
 
 ---
 
-## 2. Manajemen Barang (Produk)
+## 2. 📦 Manajemen Produk
 
-### Deskripsi
-Fitur untuk mengelola data produk/barang yang masuk dalam inventaris. Setiap produk memiliki SKU unik, kategori, harga modal, harga jual, dan informasi margin keuntungan.
+CRUD lengkap untuk produk.
 
-### Fungsi Utama
-- Melihat daftar seluruh produk dengan pagination
-- Mencari produk berdasarkan nama atau kode SKU
-- Filter produk berdasarkan kategori
-- Menambahkan produk baru
-- Mengedit data produk yang sudah ada
-- Menonaktifkan atau menghapus produk
+### Fitur
+- List produk dengan **filter** (nama, kategori, status)
+- **Sort** berdasarkan kolom apapun (nama, harga, tanggal)
+- **Pagination** (15 item per halaman default)
+- **Buat produk** baru dengan validasi SKU unik
+- **Edit** data produk
+- **Soft delete** — produk tidak benar-benar dihapus dari DB
 
-### Alur Penggunaan
-
-**Menambah Produk Baru (Staff/Manager/Admin):**
-1. Buka menu **Produk** di sidebar
-2. Klik tombol **Tambah Produk**
-3. Isi form: Nama Produk, SKU, Kategori, Harga Modal, Harga Jual, Deskripsi
-4. Centang **Produk Aktif** jika produk langsung ingin diaktifkan
-5. Klik **Simpan**
-6. Produk baru muncul di daftar
-
-**Mengedit Produk (Manager/Admin):**
-1. Cari produk yang ingin diedit melalui kolom pencarian atau filter
-2. Klik ikon pensil (✏️) pada baris produk
-3. Ubah data yang diperlukan di form edit
-4. Klik **Simpan**
-
-**Menghapus Produk (Admin):**
-1. Klik ikon tempat sampah (🗑️) pada baris produk
-2. Konfirmasi penghapusan pada dialog konfirmasi
-3. Produk dihapus secara soft-delete (tidak hilang dari database, hanya tidak aktif)
+### Form Fields
+| Field | Wajib | Keterangan |
+|---|---|---|
+| Kategori | ✅ | Dropdown dari tabel categories |
+| SKU | ✅ | Kode unik produk |
+| Nama | ✅ | Nama produk |
+| Deskripsi | ❌ | Teks bebas |
+| Harga Beli | ✅ | `standard_cost` |
+| Harga Jual | ✅ | `list_price` |
+| Status Aktif | ✅ | Toggle on/off |
 
 ---
 
-## 3. Manajemen Kategori
+## 3. 🏭 Manajemen Inventaris
 
-### Deskripsi
-Fitur untuk mengelola pengelompokan produk berdasarkan kategori. Kategori membantu pengguna menavigasi dan memfilter data produk dengan lebih mudah.
+Kelola stok produk per gudang.
 
-### Fungsi Utama
-- Melihat daftar seluruh kategori
-- Menambah kategori baru
-- Mengedit nama dan deskripsi kategori
-- Mengaktifkan atau menonaktifkan kategori
-- Menghapus kategori (jika tidak memiliki produk)
+### Fitur
+- Lihat stok semua produk di semua gudang
+- **Filter per gudang** atau per produk
+- **Filter stok rendah** — tampilkan hanya yang di bawah threshold
+- **Adjust stok** manual (set quantity dan min_quantity)
+- **Transfer antar gudang** — pindahkan stok dari gudang A ke B
 
-### Alur Penggunaan
-
-**Menambah Kategori Baru:**
-1. Buka menu **Kategori** di sidebar
-2. Klik tombol **Tambah Kategori**
-3. Isi Nama Kategori dan Deskripsi (opsional)
-4. Centang **Aktif**
-5. Klik **Simpan**
-6. Slug URL-friendly dibuat otomatis dari nama kategori
-
-> **Catatan:** Kategori yang telah memiliki produk tidak dapat dihapus untuk menjaga integritas data.
-
----
-
-## 4. Manajemen Gudang
-
-### Deskripsi
-Fitur untuk mengelola data gudang tempat penyimpanan barang. Sistem mendukung multi-gudang sehingga stok setiap produk dapat dipantau per lokasi gudang.
-
-### Fungsi Utama
-- Melihat daftar gudang dalam tampilan kartu (card view)
-- Menambah gudang baru
-- Mengedit detail gudang (nama, alamat, kontak)
-- Mengaktifkan atau menonaktifkan gudang
-- Menghapus gudang
-
-### Alur Penggunaan
-
-**Menambah Gudang Baru:**
-1. Buka menu **Gudang** di sidebar
-2. Klik tombol **Tambah Gudang**
-3. Isi form: Nama Gudang, Region, Negara, Kota, Alamat, Telepon
-4. Centang **Gudang Aktif**
-5. Klik **Simpan**
-
-**Informasi yang Ditampilkan per Kartu Gudang:**
-- Nama dan lokasi gudang (kota, negara)
-- Alamat lengkap
-- Status aktif/nonaktif
-- Tombol Edit dan Hapus (sesuai hak akses)
-
----
-
-## 5. Manajemen Stok (Inventaris)
-
-### Deskripsi
-Fitur inti yang menampilkan kondisi stok setiap produk di setiap gudang. Stok diperbarui secara otomatis ketika transaksi diproses, dan dapat diperbarui secara manual oleh Manager atau Admin.
-
-### Fungsi Utama
-- Melihat stok semua produk di semua gudang
-- Filter stok berdasarkan gudang
-- Menampilkan hanya produk dengan stok rendah
-- Update stok manual (koreksi stok fisik)
-- Transfer stok antar gudang
-
-### Alur Penggunaan
-
-**Memantau Stok:**
-1. Buka menu **Inventaris** di sidebar
-2. Gunakan dropdown filter **Gudang** untuk mempersempit tampilan
-3. Centang **Stok Rendah Saja** untuk fokus pada produk yang perlu restocking
-4. Kolom warna menunjukkan kondisi: **hijau** = normal, **amber** = stok rendah
-
-**Update Stok Manual (Manager/Admin):**
-1. Klik ikon pensil pada baris inventaris
-2. Ubah nilai Qty Di Tangan, Min Stok, atau Max Stok
-3. Klik **Simpan**
-
-> Gunakan fitur ini untuk koreksi stok setelah stock opname fisik.
-
-**Transfer Stok Antar Gudang (Manager/Admin):**
-1. Klik tombol **Transfer Stok**
-2. Pilih produk yang akan ditransfer
-3. Pilih gudang asal (**Dari Gudang**) dan gudang tujuan (**Ke Gudang**)
-4. Masukkan jumlah yang akan ditransfer
-5. Klik **Transfer**
-6. Stok gudang asal berkurang dan gudang tujuan bertambah secara otomatis
-
-> **Validasi:** Sistem akan menolak transfer jika stok tersedia di gudang asal tidak mencukupi.
-
----
-
-## 6. Barang Masuk
-
-### Deskripsi
-Pencatatan penambahan stok barang ke gudang. Dalam sistem ini, barang masuk dikelola melalui fitur **Update Stok Manual** pada halaman Inventaris, yang memungkinkan pengguna menambah nilai qty_on_hand secara langsung.
-
-### Alur Barang Masuk
-
-**Skenario: Penerimaan barang dari supplier**
-1. Barang fisik tiba di gudang
-2. Buka halaman **Inventaris**
-3. Cari produk yang baru diterima
-4. Klik ikon pensil untuk edit stok
-5. Tambahkan jumlah barang yang diterima ke nilai qty_on_hand yang sudah ada
-6. Simpan — stok otomatis terupdate
-
-**Contoh:**
-- Stok saat ini: 50 unit
-- Barang masuk: 200 unit
-- Nilai baru qty_on_hand: 250 unit
-
----
-
-## 7. Barang Keluar
-
-### Deskripsi
-Pengurangan stok barang terjadi secara **otomatis** ketika status transaksi/order diubah menjadi `shipped`. Ini memastikan stok selalu mencerminkan barang yang benar-benar telah dikirim keluar.
-
-### Alur Otomatis Pengurangan Stok
+### Transfer Stok
+1. Pilih produk
+2. Pilih gudang asal dan gudang tujuan
+3. Masukkan jumlah (tidak boleh melebihi stok tersedia)
+4. Transfer berjalan **atomik** dalam 1 database transaction
 
 ```
-Order dibuat (pending)
-    │  Stok belum berkurang
-    ▼
-Status → processing
-    │  Stok belum berkurang
-    ▼
-Status → shipped          ← Stok berkurang otomatis di sini
-    │  qty_on_hand -= quantity setiap item order
-    ▼
-Status → delivered
-    │  Stok sudah berkurang, transaksi selesai
-    ▼
-(JIKA) Status → canceled  ← Stok dikembalikan otomatis jika sebelumnya "shipped"
-         qty_on_hand += quantity setiap item order
+Gudang A: 100 unit → transfer 30 → Gudang A: 70, Gudang B: +30
+```
+
+### Alert Stok Rendah
+- Visual badge merah pada baris dengan `quantity < min_quantity`
+- Bisa di-set threshold per produk per gudang
+
+---
+
+## 4. 🛒 Manajemen Transaksi
+
+Order management dengan state machine lengkap.
+
+### State Machine
+
+```
+pending → processing → shipped → delivered
+   │           │            │
+   └───────────┴────────────┘
+               ▼
+            canceled
+```
+
+| Transisi | Aksi Sistem |
+|---|---|
+| any → `shipped` | Stok berkurang otomatis per item |
+| `shipped` → `canceled` | Stok dikembalikan otomatis |
+| any → `delivered` | Final state, tidak bisa diubah |
+
+### Buat Transaksi
+- Pilih customer, employee (PIC), warehouse sumber
+- Tambah multiple item produk
+- Harga per item bisa di-override saat input
+- `order_number` digenerate otomatis: `TRX-YYYYMMDD-XXXX`
+
+### Validasi
+- Stok harus cukup sebelum bisa di-ship
+- Tidak bisa ke status yang tidak valid dalam state machine
+- Minimal 1 item per transaksi
+
+---
+
+## 5. 🏢 Manajemen Gudang
+
+CRUD warehouse penyimpanan.
+
+### Fitur
+- Buat, edit, hapus gudang
+- Set kapasitas gudang
+- Aktif/nonaktif gudang
+- Lihat total produk yang tersimpan
+
+---
+
+## 6. 👥 Manajemen Pelanggan
+
+CRUD data customer.
+
+### Fields: nama, email, telepon, alamat
+
+---
+
+## 7. 👨‍💼 Manajemen Karyawan
+
+CRUD data employee/sales.
+
+### Fields: nama, email, telepon, jabatan, status aktif
+
+Karyawan bisa dipilih sebagai PIC saat membuat transaksi.
+
+---
+
+## 8. 📄 Laporan & Export
+
+Export data dalam format PDF dan Excel.
+
+### PDF (via DomPDF)
+| Laporan | Endpoint | Filter |
+|---|---|---|
+| Inventaris | `GET /api/reports/inventory/pdf` | — |
+| Penjualan | `GET /api/reports/sales/pdf` | `start_date`, `end_date` |
+| Dashboard | `GET /api/reports/dashboard/pdf` | — |
+
+### Excel (via Maatwebsite Excel)
+| Laporan | Endpoint | Filter |
+|---|---|---|
+| Inventaris | `GET /api/reports/inventory/excel` | — |
+| Penjualan | `GET /api/reports/sales/excel` | `start_date`, `end_date` |
+
+### Import CSV
+```bash
+php artisan inventory:import /path/to/inventory.csv
 ```
 
 ---
 
-## 8. Manajemen Customer
+## 9. 📧 Notifikasi Email
 
-### Deskripsi
-Fitur untuk mengelola data pelanggan yang melakukan transaksi pembelian. Setiap customer memiliki informasi credit limit yang digunakan untuk mengatur batas maksimum pembelian kredit.
+Alert otomatis untuk stok rendah.
 
-### Fungsi Utama
-- Melihat daftar customer dengan pencarian dan filter status
-- Menambah customer baru
-- Mengedit informasi customer
-- Memantau credit limit dan sisa kredit tersedia
-- Mengubah status customer (active/inactive/blacklisted)
+### Cara Kerja
+1. Scheduler jalankan `inventory:send-low-stock-alerts` setiap hari
+2. Cek semua produk yang `quantity < min_quantity`
+3. Kirim email alert ke admin via **queue** (background)
 
-### Alur Penggunaan
-
-**Menambah Customer Baru:**
-1. Buka menu **Customer** di sidebar
-2. Klik **Tambah Customer**
-3. Isi form: Nama, Email, Telepon, Alamat, Credit Limit, Status
-4. Klik **Simpan**
-
-**Memantau Credit:**
-- Kolom **Credit Limit** = batas maksimum kredit
-- Kolom **Tersedia** = kredit yang belum terpakai (hijau = aman, merah = habis/melewati limit)
+### Konfigurasi
+```php
+// routes/console.php
+Schedule::command('inventory:send-low-stock-alerts')->daily();
+// Atau: ->hourly(), ->everyFifteenMinutes(), dll.
+```
 
 ---
 
-## 9. Manajemen Karyawan
+## 10. 🔐 RBAC — Role Based Access Control
 
-### Deskripsi
-Fitur untuk mengelola data karyawan yang terlibat dalam operasional inventaris. Karyawan dapat ditugaskan ke gudang tertentu dan dapat dipilih sebagai penanggung jawab transaksi.
+4 role dengan permission berbeda.
 
-### Fungsi Utama
-- Melihat daftar karyawan dengan filter berdasarkan gudang
-- Menambah data karyawan baru
-- Mengedit informasi karyawan (jabatan, gudang, status aktif)
-- Menonaktifkan atau menghapus data karyawan
+| Role | Deskripsi |
+|---|---|
+| `admin` | Akses penuh ke semua fitur |
+| `manager` | Semua fitur kecuali manajemen user |
+| `staff` | Buat transaksi, kelola inventaris |
+| `viewer` | Read-only, hanya lihat data |
 
-### Alur Penggunaan
-
-**Menambah Karyawan:**
-1. Buka menu **Karyawan** di sidebar
-2. Klik **Tambah Karyawan**
-3. Isi form: Nama, Email, Telepon, Jabatan, Departemen, Gudang, Tanggal Masuk
-4. Centang **Karyawan Aktif**
-5. Klik **Simpan**
+### Implementasi
+- **Backend:** Middleware `CheckRole` di route group
+- **Frontend:** UI sembunyikan tombol action berdasarkan role
+- API tetap enforce role bahkan jika UI di-bypass
 
 ---
 
-## 10. Manajemen Transaksi (Order)
+## 11. 🔑 Authentication & Session
 
-### Deskripsi
-Fitur untuk mencatat dan mengelola seluruh transaksi penjualan. Setiap transaksi memiliki alur status yang terstruktur dari pembuatan order hingga selesai atau dibatalkan.
-
-### Fungsi Utama
-- Melihat daftar transaksi dengan filter status dan tanggal
-- Melihat detail transaksi dan item-itemnya
-- Membuat order baru
-- Memperbarui status transaksi
-- Tracking otomatis pengurangan dan pemulihan stok
-
-### Alur Penggunaan
-
-**Membuat Order Baru (Staff/Manager/Admin):**
-1. Buka menu **Transaksi** di sidebar
-2. Klik **Buat Order**
-3. Pilih **Customer** dan **Gudang** yang akan digunakan
-4. Tambahkan item produk: klik **+ Tambah Item**, pilih produk, isi jumlah dan harga
-5. Tambahkan lebih banyak item jika diperlukan
-6. Isi catatan order (opsional)
-7. Klik **Buat Order**
-8. Order tersimpan dengan status `pending`
-
-**Memperbarui Status Transaksi (Manager/Admin):**
-1. Temukan transaksi di daftar
-2. Klik ikon refresh (🔄) pada baris transaksi
-3. Pilih status berikutnya sesuai alur yang valid
-4. Status berhasil diperbarui
-5. Jika status diubah ke `shipped`, stok berkurang otomatis
-6. Jika order dibatalkan setelah `shipped`, stok dipulihkan otomatis
-
-**Melihat Detail Transaksi (Semua role):**
-1. Klik ikon mata (👁️) pada baris transaksi
-2. Dialog detail menampilkan: info order, customer, gudang, status, dan semua item beserta subtotal
+- Token-based via **Laravel Sanctum**
+- Token disimpan di `localStorage` frontend
+- **Idle timeout** — auto-logout setelah **3 menit** tidak aktif
+- Activity reset pada setiap interaksi (mouse, keyboard)
+- Token di-revoke di server saat logout
 
 ---
 
-## 11. Role Pengguna (Admin & Staff)
+## 12. 📱 Responsive Design
 
-### Deskripsi
-Sistem mengimplementasikan Role-Based Access Control (RBAC) dengan 4 tingkat hak akses untuk memastikan setiap pengguna hanya dapat mengakses fitur yang sesuai dengan tanggung jawabnya.
+| Ukuran Layar | Layout |
+|---|---|
+| Desktop (1024px+) | Sidebar tetap terbuka, tabel penuh |
+| Tablet (768px–1024px) | Sidebar collapsible |
+| Mobile (<768px) | Sidebar jadi overlay drawer, tabel jadi card list |
 
-### Deskripsi Setiap Role
-
-**Admin**
-- Akses penuh ke seluruh fitur sistem
-- Satu-satunya role yang dapat menghapus data secara permanen
-- Cocok untuk: administrator sistem, IT manager
-
-**Manager**
-- Dapat membuat dan mengedit data di semua modul
-- Dapat melakukan transfer stok dan update status transaksi
-- Tidak dapat menghapus data
-- Cocok untuk: manajer gudang, supervisor inventaris
-
-**Staff**
-- Dapat melihat semua data
-- Dapat membuat data baru di semua modul
-- Dapat membuat order baru
-- Tidak dapat mengedit atau menghapus data yang sudah ada
-- Cocok untuk: staf gudang, staf administrasi
-
-**Viewer**
-- Hanya dapat melihat data di semua modul
-- Tidak dapat membuat, mengedit, atau menghapus data apapun
-- Cocok untuk: auditor, manajemen tingkat atas yang hanya perlu monitoring
-
-### Pengelolaan Pengguna
-Penambahan dan pengelolaan akun pengguna dilakukan langsung di database oleh Admin melalui seeder atau command artisan. Dalam pengembangan selanjutnya, modul manajemen user dapat ditambahkan sebagai halaman terpisah.
-
----
-
-## 12. Laporan Inventaris
-
-### Deskripsi
-Fitur laporan menyediakan ringkasan data inventaris dan penjualan yang dapat digunakan sebagai dasar pengambilan keputusan bisnis.
-
-### Laporan yang Tersedia
-
-**Laporan Penjualan** (`GET /api/reports/sales`)
-- Total revenue per periode
-- Jumlah order per status
-- Produk terlaris berdasarkan jumlah unit dan revenue
-
-**Laporan Inventaris** (`GET /api/reports/inventory`)
-- Kondisi stok semua produk per gudang
-- Daftar produk dengan stok rendah
-- Nilai total inventaris (qty × harga modal)
-
-### Alur Penggunaan
-1. Akses endpoint laporan melalui API atau halaman laporan di frontend
-2. Tentukan parameter filter: tanggal mulai, tanggal akhir, gudang, kategori
-3. Sistem menghasilkan laporan sesuai filter
-4. Laporan dapat diekspor ke format Excel atau PDF (fitur dalam pengembangan)
-
-> **Catatan Pengembangan:** Fitur export laporan ke Excel menggunakan package `maatwebsite/excel` dan PDF menggunakan `barryvdh/laravel-dompdf`. Implementasi view template Blade untuk export sedang dalam tahap pengembangan.
+Menggunakan Tailwind CSS breakpoints (`sm:`, `md:`, `lg:`).

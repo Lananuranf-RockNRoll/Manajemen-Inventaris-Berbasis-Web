@@ -1,348 +1,228 @@
-# 🏗️ Arsitektur Sistem
+# 🏛 Architecture Documentation
 
-Dokumen ini menjelaskan arsitektur keseluruhan Sistem Informasi Manajemen Inventaris, mencakup struktur komponen, alur komunikasi, dan desain teknis yang digunakan.
-
----
-
-## 1. Gambaran Umum Arsitektur
-
-Sistem ini menggunakan arsitektur **Decoupled (Frontend-Backend Terpisah)**, di mana frontend dan backend merupakan dua aplikasi independen yang berkomunikasi melalui REST API.
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                        USER (Browser)                           │
-└────────────────────────────┬────────────────────────────────────┘
-                             │
-                  ┌──────────▼──────────┐
-                  │   FRONTEND          │
-                  │   Vue.js 3          │
-                  │   TypeScript        │
-                  │   Tailwind CSS      │
-                  │   Vite (build)      │
-                  │   ─────────────     │
-                  │   Vue Router        │
-                  │   Pinia Store       │
-                  │   Axios Client      │
-                  └──────────┬──────────┘
-                             │
-                 HTTP / REST API
-                 Bearer Token (Sanctum)
-                 Content-Type: application/json
-                             │
-                  ┌──────────▼──────────┐
-                  │   BACKEND           │
-                  │   Laravel 11        │
-                  │   PHP 8.2+          │
-                  │   ─────────────     │
-                  │   API Routes        │
-                  │   Middleware RBAC   │
-                  │   Controllers       │
-                  │   Services          │
-                  │   Eloquent ORM      │
-                  │   Events/Listeners  │
-                  └──────────┬──────────┘
-                             │
-                  ┌──────────▼──────────┐
-                  │   DATABASE          │
-                  │   MySQL 8.0         │
-                  │   9 Tabel Utama     │
-                  │   Normalisasi 3NF   │
-                  └─────────────────────┘
-```
+Dokumentasi arsitektur sistem InvenSys.
 
 ---
 
-## 2. Komponen Utama Sistem
+## Gambaran Umum
 
-### 2.1 Frontend — Vue.js Application
-
-Frontend adalah Single Page Application (SPA) yang berjalan sepenuhnya di browser pengguna. Setelah di-load pertama kali, navigasi antar halaman dilakukan tanpa reload browser penuh.
-
-| Komponen | Teknologi | Fungsi |
-|----------|-----------|--------|
-| **Halaman (Views)** | Vue SFC (.vue) | Tampilan setiap halaman aplikasi |
-| **Komponen UI** | Vue + Tailwind | Elemen UI yang dapat digunakan ulang |
-| **Routing** | Vue Router 4 | Navigasi antar halaman dan route guard |
-| **State Management** | Pinia | Menyimpan state global (auth, data) |
-| **HTTP Client** | Axios | Mengirim request ke backend API |
-| **Type System** | TypeScript | Validasi tipe data saat development |
-| **Build Tool** | Vite | Bundling dan hot-reload development |
-
-**Struktur layer frontend:**
+InvenSys menggunakan arsitektur **decoupled** — backend API dan frontend SPA terpisah, namun di-serve dari satu Nginx container di production.
 
 ```
 Browser
-└── App.vue (root)
-    ├── AppLayout.vue (sidebar + topbar)
-    │   ├── DashboardView.vue
-    │   ├── ProductsView.vue
-    │   ├── InventoryView.vue
-    │   ├── TransactionsView.vue
-    │   └── ... (halaman lainnya)
-    └── LoginView.vue (tanpa layout)
-```
-
-### 2.2 Backend — Laravel REST API
-
-Backend adalah aplikasi Laravel yang berfungsi murni sebagai REST API server. Backend tidak me-render HTML — hanya menerima request dan mengembalikan response dalam format JSON.
-
-| Komponen | Fungsi |
-|----------|--------|
-| **Routes** (`routes/api.php`) | Mendefinisikan endpoint API |
-| **Middleware** | Autentikasi Sanctum, RBAC role check |
-| **Controllers** | Menangani request dan mengatur response |
-| **Services** | Logika bisnis yang kompleks (stok, transaksi) |
-| **Models** | Representasi tabel database dengan Eloquent |
-| **Events & Listeners** | Manajemen stok berbasis event (OrderShipped, OrderCanceled) |
-| **Resources** | Transformasi data model ke format JSON |
-
-### 2.3 Database — MySQL
-
-Database menyimpan seluruh data persisten sistem. Skema dirancang menggunakan normalisasi 3NF untuk meminimalkan redundansi dan menjaga integritas data.
-
----
-
-## 3. Alur Request dan Response
-
-### 3.1 Alur Autentikasi (Login)
-
-```
-Browser                   Frontend (Vue)               Backend (Laravel)          Database
-   │                           │                              │                       │
-   │  Klik tombol Login        │                              │                       │
-   │ ─────────────────────────►│                              │                       │
-   │                           │  POST /api/auth/login        │                       │
-   │                           │  { email, password }         │                       │
-   │                           │ ────────────────────────────►│                       │
-   │                           │                              │  SELECT * FROM users  │
-   │                           │                              │ ─────────────────────►│
-   │                           │                              │  ◄─────────────────── │
-   │                           │                              │  Hash compare         │
-   │                           │  200 OK                      │                       │
-   │                           │  { token, user }             │                       │
-   │                           │ ◄────────────────────────────│                       │
-   │                           │  Simpan token ke localStorage│                       │
-   │  Redirect ke Dashboard    │                              │                       │
-   │ ◄─────────────────────────│                              │                       │
-```
-
-### 3.2 Alur Request Data Terautentikasi
-
-```
-Frontend (Vue)                          Backend (Laravel)
-     │                                        │
-     │  GET /api/products                     │
-     │  Header: Authorization: Bearer {token} │
-     │ ──────────────────────────────────────►│
-     │                                        │  Middleware: auth:sanctum
-     │                                        │  Validasi token di tabel
-     │                                        │  personal_access_tokens
-     │                                        │
-     │                                        │  Middleware: CheckRole
-     │                                        │  Periksa user->role
-     │                                        │
-     │                                        │  ProductController@index
-     │                                        │  Eloquent query + pagination
-     │                                        │
-     │  200 OK                                │
-     │  { data: [...], meta: {...} }          │
-     │ ◄──────────────────────────────────────│
-     │                                        │
-     │  Update reactive state (Pinia/ref)     │
-     │  Render tabel di UI                    │
-```
-
-### 3.3 Alur Transaksi dengan Event-Driven Stok
-
-```
-Frontend           Backend Controller      TransactionService      Event System         Database
-    │                      │                       │                     │                  │
-    │ PATCH /status=shipped │                       │                     │                  │
-    │ ──────────────────── ►│                       │                     │                  │
-    │                       │ updateStatus()        │                     │                  │
-    │                       │ ──────────────────── ►│                     │                  │
-    │                       │                       │ Validasi alur status│                  │
-    │                       │                       │ Update status DB    │                  │
-    │                       │                       │ ─────────────────────────────────────►│
-    │                       │                       │                     │                  │
-    │                       │                       │ event(OrderShipped) │                  │
-    │                       │                       │ ────────────────── ►│                  │
-    │                       │                       │                     │ DeductInventory  │
-    │                       │                       │                     │ ─────────────────►│
-    │                       │                       │                     │ UPDATE inventory │
-    │                       │                       │                     │  qty_on_hand -= n│
-    │  200 OK               │                       │                     │                  │
-    │ ◄─────────────────────│                       │                     │                  │
+  │ HTTP :80
+  ▼
+┌─────────────────────────────────────────────┐
+│              Nginx Container                 │
+│  ┌───────────────────┐  ┌─────────────────┐ │
+│  │   Vue 3 SPA       │  │ /api/* → PHP-FPM│ │
+│  │   (static files)  │  │  FastCGI proxy  │ │
+│  └───────────────────┘  └─────────────────┘ │
+└─────────────────────────────────────────────┘
+  │ FastCGI :9000
+  ▼
+┌─────────────────────────────────────────────┐
+│         PHP-FPM Container (Laravel 12)       │
+│                                              │
+│  Route → Middleware → Controller → Service   │
+│                            │                 │
+│                         Model ↔ MySQL        │
+│                            │                 │
+│                    Event → Listener → Queue  │
+└─────────────────────────────────────────────┘
+         ┌──────────────┬────────────────────┐
+         ▼              ▼                    ▼
+   MySQL 8.0      Queue Worker          Scheduler
+   Container      Container             Container
 ```
 
 ---
 
-## 4. Pola Komunikasi REST API
+## Backend — Laravel 12
 
-### 4.1 Format Request
-
-Semua request ke API menggunakan format berikut:
+### Struktur Direktori
 
 ```
-Method : GET | POST | PUT | PATCH | DELETE
-URL    : http://127.0.0.1:8000/api/{resource}
-Headers:
-  Content-Type  : application/json
-  Accept        : application/json
-  Authorization : Bearer {sanctum_token}   ← wajib untuk endpoint terproteksi
-Body   : JSON (untuk POST, PUT, PATCH)
+inventory-app/
+├── app/
+│   ├── Console/Commands/       # Artisan commands
+│   │   ├── ImportInventoryCSV.php
+│   │   └── SendLowStockAlerts.php
+│   ├── Events/                 # Domain events
+│   │   ├── OrderShipped.php
+│   │   └── OrderCanceled.php
+│   ├── Exports/                # Excel exports (Maatwebsite)
+│   ├── Http/
+│   │   ├── Controllers/Api/    # REST controllers (thin)
+│   │   ├── Middleware/         # CORS, CheckRole, ForceJsonResponse
+│   │   ├── Requests/           # Form Request validation
+│   │   └── Resources/          # API Resource transformers
+│   ├── Listeners/              # Event handlers
+│   │   ├── DeductInventoryOnShip.php
+│   │   └── RestoreInventoryOnCancel.php
+│   ├── Mail/                   # Mailable classes
+│   ├── Models/                 # Eloquent models
+│   ├── Providers/              # EventServiceProvider
+│   └── Services/               # Business logic
+│       ├── InventoryService.php
+│       ├── TransactionService.php
+│       └── ReportService.php
+├── database/
+│   ├── migrations/
+│   └── seeders/
+└── routes/
+    └── api.php                 # Semua API routes
 ```
 
-### 4.2 Format Response
+### Alur Request
 
-Semua response dari API menggunakan struktur yang konsisten:
-
-**Response sukses (data tunggal):**
-```json
-{
-  "status": "success",
-  "message": "Data berhasil diambil",
-  "data": { ... }
-}
+```
+HTTP Request
+  ↓
+Middleware Stack:
+  - CorsMiddleware (handle OPTIONS preflight)
+  - ForceJsonResponse (semua response pasti JSON)
+  - auth:sanctum (verifikasi Bearer token)
+  - CheckRole (verifikasi role user)
+  ↓
+Form Request (validasi input)
+  ↓
+Controller (thin — hanya terima & return)
+  ↓
+Service Layer (business logic)
+  ↓
+Eloquent Model
+  ↓
+Database (MySQL)
+  ↓ (async)
+Event → Queue → Listener (side effects)
 ```
 
-**Response sukses (data list dengan pagination):**
-```json
-{
-  "status": "success",
-  "data": [ ... ],
-  "meta": {
-    "current_page": 1,
-    "last_page": 10,
-    "per_page": 15,
-    "total": 150,
-    "from": 1,
-    "to": 15
-  },
-  "links": {
-    "first": "http://...",
-    "last": "http://...",
-    "prev": null,
-    "next": "http://..."
-  }
-}
-```
+### Design Patterns
 
-**Response error validasi (422):**
-```json
-{
-  "message": "The given data was invalid.",
-  "errors": {
-    "name": ["The name field is required."],
-    "sku": ["The sku has already been taken."]
-  }
-}
-```
-
-**Response error autentikasi (401):**
-```json
-{
-  "message": "Unauthenticated."
-}
-```
-
-### 4.3 HTTP Status Code yang Digunakan
-
-| Kode | Kondisi |
-|------|---------|
-| `200 OK` | Request berhasil (GET, PUT, PATCH) |
-| `201 Created` | Resource baru berhasil dibuat (POST) |
-| `204 No Content` | Berhasil tanpa response body (DELETE) |
-| `401 Unauthorized` | Token tidak valid atau tidak ada |
-| `403 Forbidden` | Token valid tapi role tidak cukup |
-| `404 Not Found` | Resource tidak ditemukan |
-| `422 Unprocessable` | Validasi input gagal |
-| `500 Server Error` | Error internal server |
+- **Service Layer** — Logic di `Services/`, controller hanya delegasi
+- **API Resources** — Output transformation via `Http/Resources/`
+- **Form Requests** — Validasi terpusat, bukan di controller
+- **Events & Listeners** — Decoupled side effects (inventory deduction/restore)
+- **Queue** — Async jobs untuk email dan background tasks
 
 ---
 
-## 5. Sistem Autentikasi dan Otorisasi
+## Frontend — Vue 3 SPA
 
-### 5.1 Laravel Sanctum (Token-Based Auth)
-
-Sistem menggunakan **Stateless Token Authentication** via Laravel Sanctum:
-
-1. Pengguna login → backend membuat Personal Access Token
-2. Token disimpan di tabel `personal_access_tokens`
-3. Frontend menyimpan token di `localStorage`
-4. Setiap request API menyertakan token di header `Authorization: Bearer {token}`
-5. Backend memvalidasi token untuk setiap request ke route yang terproteksi
-
-### 5.2 Role-Based Access Control (RBAC)
-
-Hierarki role dari terendah ke tertinggi:
+### Struktur Direktori
 
 ```
-Viewer < Staff < Manager < Admin
-```
-
-| Permission | Viewer | Staff | Manager | Admin |
-|------------|:------:|:-----:|:-------:|:-----:|
-| Lihat semua data | ✅ | ✅ | ✅ | ✅ |
-| Buat data / transaksi | ❌ | ✅ | ✅ | ✅ |
-| Edit data | ❌ | ❌ | ✅ | ✅ |
-| Transfer stok | ❌ | ❌ | ✅ | ✅ |
-| Update status transaksi | ❌ | ❌ | ✅ | ✅ |
-| Hapus data | ❌ | ❌ | ❌ | ✅ |
-
----
-
-## 6. Arsitektur Event-Driven untuk Manajemen Stok
-
-Manajemen stok menggunakan event-driven architecture untuk memastikan konsistensi data:
-
-```
-TransactionService
-├── Status: pending → processing   → (tidak ada event stok)
-├── Status: processing → shipped   → dispatch(OrderShipped)
-│                                      └── DeductInventoryOnShip
-│                                            └── inventory.qty_on_hand -= quantity
-├── Status: shipped → delivered    → (tidak ada event stok)
-└── Status: * → canceled           → dispatch(OrderCanceled)  [jika sebelumnya shipped]
-                                       └── RestoreInventoryOnCancel
-                                             └── inventory.qty_on_hand += quantity
-```
-
----
-
-## 7. Struktur Folder Singkat
-
-### Backend (`inventory-app/`)
-
-```
-app/
-├── Http/
-│   ├── Controllers/Api/    ← Controller untuk setiap resource
-│   ├── Middleware/         ← CheckRole, autentikasi
-│   └── Requests/           ← Form Request validasi
-├── Models/                 ← Eloquent models
-├── Services/               ← Logika bisnis (InventoryService, TransactionService)
-├── Events/                 ← OrderShipped, OrderCanceled
-├── Listeners/              ← DeductInventory, RestoreInventory
-└── Providers/              ← EventServiceProvider
-routes/
-└── api.php                 ← Definisi semua endpoint API
-database/
-├── migrations/             ← Skema tabel
-└── seeders/                ← Data awal
-```
-
-### Frontend (`inventory-ui/`)
-
-```
-src/
-├── api/                    ← Modul axios per resource
-├── stores/                 ← Pinia stores (auth, dll)
-├── views/                  ← Halaman aplikasi per fitur
+inventory-ui/src/
+├── api/                  # Axios API calls per domain
+│   ├── index.ts          # Axios instance + interceptors
+│   ├── auth.ts
+│   ├── products.ts
+│   ├── inventory.ts
+│   ├── transactions.ts
+│   └── ...
 ├── components/
-│   └── layout/             ← AppLayout (sidebar, topbar)
-├── router/                 ← Definisi route dan guard
-├── types/                  ← TypeScript interfaces
-└── assets/
-    └── main.css            ← Tailwind CSS entry
+│   └── layout/
+│       └── AppLayout.vue # Sidebar + main content layout
+├── router/
+│   └── index.ts          # Vue Router + navigation guards
+├── stores/
+│   └── auth.ts           # Pinia store (user, token, idle timer)
+├── types/
+│   └── index.ts          # TypeScript interfaces
+└── views/                # Page components
+    ├── dashboard/
+    ├── products/
+    ├── inventory/
+    ├── transactions/
+    └── ...
+```
+
+### State Management (Pinia)
+
+```typescript
+// stores/auth.ts
+state: {
+  user: User | null       // Data user login
+  token: string | null    // Bearer token
+}
+// Keduanya disimpan di localStorage untuk persist
+
+actions:
+  login()   // POST /api/auth/login → simpan token & user
+  logout()  // POST /api/auth/logout → hapus token, redirect /login
+
+// Idle timeout: auto-logout setelah 3 menit tidak aktif
+// Activity reset setiap mousemove, keypress, click
+```
+
+### Axios Interceptors
+
+```typescript
+// api/index.ts
+
+// Request: tambah Authorization header otomatis
+config.headers.Authorization = `Bearer ${token}`
+
+// Response: jika 401 → auto redirect ke /login
+if (error.response?.status === 401) {
+  authStore.logout()
+  router.push('/login')
+}
+```
+
+---
+
+## Event-Driven Inventory
+
+```
+TransactionController.updateStatus(id, 'shipped')
+  → TransactionService.ship(transaction)
+    → transaction.update({ status: 'shipped' })
+    → event(new OrderShipped(transaction))
+      → DeductInventoryOnShip::handle()
+        → InventoryService.deductForTransaction(transaction)
+          → inventory.decrement('quantity', qty) per item
+
+TransactionController.updateStatus(id, 'canceled')  [was 'shipped']
+  → TransactionService.cancel(transaction)
+    → transaction.update({ status: 'canceled' })
+    → event(new OrderCanceled(transaction))
+      → RestoreInventoryOnCancel::handle()
+        → InventoryService.restoreForTransaction(transaction)
+          → inventory.increment('quantity', qty) per item
+```
+
+Listener berjalan **synchronous** untuk memastikan konsistensi data stok.
+
+---
+
+## Security
+
+| Aspek | Implementasi |
+|---|---|
+| Authentication | Laravel Sanctum (Bearer token) |
+| Authorization | `CheckRole` middleware per route group |
+| CORS | `CorsMiddleware` — handle preflight OPTIONS |
+| JSON Response | `ForceJsonResponse` — semua API response pasti JSON |
+| Soft Delete | Products menggunakan soft delete |
+| Input Validation | Form Request di semua endpoint write |
+| Password | bcrypt hashing (Laravel default) |
+| Idle Timeout | 3 menit auto-logout di frontend |
+
+---
+
+## Queue & Scheduler
+
+```
+Queue Driver: database (tabel `jobs`)
+
+Jobs di-queue:
+- SendLowStockAlert (email ke admin)
+
+Scheduler (routes/console.php):
+- SendLowStockAlerts → daily
+
+Worker command:
+php artisan queue:work --tries=3 --timeout=90
 ```

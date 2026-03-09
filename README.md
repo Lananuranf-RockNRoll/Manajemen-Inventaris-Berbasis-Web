@@ -1,185 +1,152 @@
-# 📦 Sistem Informasi Manajemen Inventaris Berbasis Web
+# 📦 InvenSys — Sistem Manajemen Inventaris Berbasis Web
 
-![Laravel](https://img.shields.io/badge/Laravel-11.x-FF2D20?style=flat-square&logo=laravel)
-![Vue.js](https://img.shields.io/badge/Vue.js-3.x-4FC08D?style=flat-square&logo=vuedotjs)
-![MySQL](https://img.shields.io/badge/MySQL-8.0-4479A1?style=flat-square&logo=mysql)
-![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-v4-06B6D4?style=flat-square&logo=tailwindcss)
-![License](https://img.shields.io/badge/License-MIT-green?style=flat-square)
+<div align="center">
 
-Sistem informasi berbasis web untuk mengelola inventaris barang secara efisien dan terintegrasi. Dibangun dengan arsitektur **frontend-backend terpisah** menggunakan Laravel REST API dan Vue.js.
+![Laravel](https://img.shields.io/badge/Laravel-12.x-FF2D20?style=for-the-badge&logo=laravel)
+![Vue.js](https://img.shields.io/badge/Vue.js-3.5-4FC08D?style=for-the-badge&logo=vue.js)
+![TypeScript](https://img.shields.io/badge/TypeScript-5.9-3178C6?style=for-the-badge&logo=typescript)
+![MySQL](https://img.shields.io/badge/MySQL-8.0-4479A1?style=for-the-badge&logo=mysql)
+![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?style=for-the-badge&logo=docker)
+![Kubernetes](https://img.shields.io/badge/Kubernetes-Ready-326CE5?style=for-the-badge&logo=kubernetes)
 
----
+**Sistem manajemen inventaris berbasis web — Laravel 12 REST API + Vue 3 SPA, siap Docker & Kubernetes.**
 
-## 📋 Deskripsi Aplikasi
-
-Sistem Informasi Manajemen Inventaris adalah aplikasi web yang dirancang untuk membantu organisasi atau perusahaan dalam mengelola data barang, memantau stok, serta mencatat transaksi barang masuk dan keluar secara real-time.
-
-Sistem ini menggantikan pencatatan manual yang rawan kesalahan dengan solusi digital yang terintegrasi, akurat, dan mudah diakses dari perangkat apapun melalui browser web.
+</div>
 
 ---
 
-## 🎯 Tujuan Aplikasi
-
-- Menyediakan sistem pencatatan inventaris yang akurat dan terintegrasi
-- Memudahkan pemantauan stok barang secara real-time lintas gudang
-- Mencatat riwayat transaksi barang masuk dan keluar secara terstruktur
-- Menghasilkan laporan inventaris yang dapat diandalkan untuk pengambilan keputusan
-- Membatasi akses fitur berdasarkan peran pengguna demi keamanan data
-
----
-
-## ✨ Fitur Utama
-
-| Fitur | Deskripsi |
-|-------|-----------|
-| 📊 **Dashboard** | Ringkasan KPI inventaris, stok rendah, dan transaksi terkini |
-| 📦 **Manajemen Barang** | CRUD data barang lengkap dengan pencarian dan filter kategori |
-| 🏷️ **Manajemen Kategori** | Pengelompokan barang berdasarkan kategori |
-| 🏭 **Manajemen Gudang** | Pengelolaan data multi-gudang |
-| 📋 **Manajemen Stok** | Pemantauan stok real-time per produk per gudang |
-| ⬆️ **Barang Masuk** | Pencatatan penerimaan dan penambahan stok |
-| ⬇️ **Barang Keluar** | Pencatatan pengeluaran dan pengurangan stok |
-| 👥 **Manajemen Customer** | Data pelanggan lengkap dengan informasi credit limit |
-| 👤 **Manajemen Karyawan** | Data karyawan yang terhubung ke gudang |
-| 🔄 **Manajemen Transaksi** | Order management dengan alur status yang tervalidasi |
-| 🔐 **Role & Akses** | RBAC dengan 4 level: Admin, Manager, Staff, Viewer |
-| 📈 **Laporan** | Laporan penjualan dan laporan inventaris |
+## 📋 Daftar Isi
+- [Fitur](#-fitur)
+- [Tech Stack](#-tech-stack)
+- [Arsitektur](#-arsitektur)
+- [Quick Start Docker](#-quick-start-docker)
+- [Quick Start Local](#-quick-start-local)
+- [Default Accounts](#-default-accounts)
+- [RBAC](#-rbac)
+- [Dokumentasi](#-dokumentasi)
 
 ---
 
-## 🛠️ Teknologi yang Digunakan
+## ✨ Fitur
 
-### Backend
-
-| Teknologi | Versi | Fungsi |
-|-----------|-------|--------|
-| PHP | 8.2+ | Bahasa pemrograman backend |
-| Laravel | 11.x | Framework backend REST API |
-| Laravel Sanctum | 4.x | Autentikasi berbasis token (Bearer Token) |
-| Eloquent ORM | bawaan | Interaksi dengan database |
-| MySQL | 8.0 | Sistem manajemen database |
-
-### Frontend
-
-| Teknologi | Versi | Fungsi |
-|-----------|-------|--------|
-| Vue.js | 3.x | Framework frontend reaktif |
-| TypeScript | 5.x | Type-safe JavaScript |
-| Vue Router | 4.x | Navigasi dan routing halaman |
-| Pinia | 2.x | State management |
-| Tailwind CSS | v4 | Utility-first CSS framework |
-| Axios | 1.x | HTTP client untuk komunikasi API |
-| Lucide Vue | latest | Library ikon |
-| Vite | 6.x | Build tool dan dev server |
+- **Dashboard** — KPI ringkasan, grafik penjualan, alert stok rendah
+- **Produk & Kategori** — CRUD dengan SKU, harga beli/jual, soft delete
+- **Inventaris Multi-Warehouse** — Stok per gudang, transfer antar gudang
+- **Transaksi** — State machine: `pending → processing → shipped → delivered / canceled`
+- **Laporan** — Export PDF & Excel (inventaris, penjualan, dashboard)
+- **Email Alert** — Notifikasi stok rendah via queue & scheduler
+- **RBAC** — 4 role: admin, manager, staff, viewer
+- **Responsif** — Mobile-friendly, sidebar collapsible, card layout mobile
+- **Docker & Kubernetes** — Siap deploy production
 
 ---
 
-## 🏗️ Arsitektur Singkat
+## 🛠 Tech Stack
+
+**Backend:** PHP 8.2+, Laravel 12, Sanctum 4, MySQL 8.0, DomPDF, Maatwebsite Excel, Spatie Query Builder
+
+**Frontend:** Vue 3.5, TypeScript 5.9, Vite 7, Tailwind CSS v4, Pinia 3, Vue Router 5, Axios, Chart.js, Lucide Icons
+
+**Infrastructure:** Docker, Docker Compose, Kubernetes, Nginx, PHP-FPM
+
+---
+
+## 🏗 Arsitektur
 
 ```
-┌──────────────────────────────────────────────────────┐
-│                  CLIENT (Browser)                     │
-│                                                        │
-│   Vue.js 3 + TypeScript + Tailwind CSS               │
-│   ├── Vue Router  — navigasi halaman                 │
-│   ├── Pinia       — state management & auth store    │
-│   └── Axios       — HTTP client dengan interceptor   │
-└──────────────────────┬───────────────────────────────┘
-                        │  HTTP REST API
-                        │  JSON + Bearer Token
-                        │  http://127.0.0.1:8000/api
-┌──────────────────────▼───────────────────────────────┐
-│              BACKEND — Laravel 11                     │
-│                                                        │
-│   ├── Laravel Sanctum  — token authentication        │
-│   ├── RBAC Middleware  — role-based access control   │
-│   ├── Eloquent ORM     — database abstraction        │
-│   └── Event-Driven     — inventory stock management  │
-└──────────────────────┬───────────────────────────────┘
-                        │
-┌──────────────────────▼───────────────────────────────┐
-│                 MySQL 8.0 Database                    │
-│   9 tabel utama, normalisasi 3NF                     │
-└──────────────────────────────────────────────────────┘
+Browser
+  │ HTTP :80
+Nginx (Vue SPA static + /api/* FastCGI proxy)
+  │ FastCGI :9000
+PHP-FPM (Laravel 12 REST API)
+  │
+  ├── MySQL 8.0
+  ├── Queue Worker (database queue)
+  └── Scheduler (artisan schedule:work)
 ```
+
+Detail lengkap: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
 
 ---
 
-## 📁 Struktur Dokumentasi
-
-```
-docs/
-├── INSTALLATION.md     # Panduan instalasi lengkap dari awal
-├── ARCHITECTURE.md     # Dokumentasi arsitektur sistem
-├── DATABASE.md         # Skema database dan relasi antar tabel
-├── API.md              # Referensi lengkap REST API endpoint
-├── FEATURES.md         # Dokumentasi fitur dan alur penggunaan
-├── DEVELOPMENT.md      # Panduan pengembangan untuk developer
-└── DEPLOYMENT.md       # Panduan deploy ke server production
-```
-
----
-
-## 🚀 Cara Menjalankan (Ringkas)
-
-### Prasyarat
-
-- PHP >= 8.2
-- Composer >= 2.x
-- Node.js >= 20.x
-- MySQL 8.0
-
-### Backend (Laravel)
+## 🚀 Quick Start Docker
 
 ```bash
-git clone https://github.com/username/inventory-app.git
+git clone https://github.com/Lananuranf-RockNRoll/Manajemen-Inventaris-Berbasis-Web.git
+cd Manajemen-Inventaris-Berbasis-Web
+
+docker-compose up --build
+```
+
+Tunggu log `🚀 Starting PHP-FPM...` lalu buka **http://localhost**
+
+> Migration dan seeding database berjalan otomatis.
+
+Detail: [docs/DOCKER.md](docs/DOCKER.md)
+
+---
+
+## 💻 Quick Start Local
+
+```bash
+# Backend
 cd inventory-app
-composer install
-cp .env.example .env
+composer install && cp .env.example .env
 php artisan key:generate
-# Sesuaikan konfigurasi database di .env
+# Edit .env sesuaikan DB credentials
 php artisan migrate --seed
-php artisan serve
-# API berjalan di http://127.0.0.1:8000
-```
+php artisan serve        # http://127.0.0.1:8000
 
-### Frontend (Vue.js)
-
-```bash
-git clone https://github.com/username/inventory-ui.git
+# Frontend (terminal baru)
 cd inventory-ui
-npm install
-npm run dev
-# UI berjalan di http://localhost:5173
+npm install && npm run dev   # http://localhost:5173
 ```
 
-### Akun Default
+Detail: [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)
+
+---
+
+## 👤 Default Accounts
 
 | Role | Email | Password |
-|------|-------|----------|
+|---|---|---|
 | Admin | admin@inventory.test | password |
 | Manager | manager@inventory.test | password |
 | Staff | staff@inventory.test | password |
 | Viewer | viewer@inventory.test | password |
 
-> 📖 Lihat [docs/INSTALLATION.md](docs/INSTALLATION.md) untuk panduan instalasi lengkap dan terperinci.
+---
+
+## 🔐 RBAC
+
+| Fitur | Admin | Manager | Staff | Viewer |
+|---|:---:|:---:|:---:|:---:|
+| Dashboard | ✅ | ✅ | ✅ | ✅ |
+| Kelola Produk | ✅ | ✅ | ❌ | ❌ |
+| Lihat Produk | ✅ | ✅ | ✅ | ✅ |
+| Transfer Stok | ✅ | ✅ | ✅ | ❌ |
+| Kelola Transaksi | ✅ | ✅ | ✅ | ❌ |
+| Lihat Laporan | ✅ | ✅ | ✅ | ✅ |
+| Kelola Karyawan | ✅ | ✅ | ❌ | ❌ |
+| Manajemen User | ✅ | ❌ | ❌ | ❌ |
 
 ---
 
-## 📚 Dokumentasi Lengkap
+## 📚 Dokumentasi
 
 | Dokumen | Deskripsi |
-|---------|-----------|
-| [📥 INSTALLATION.md](docs/INSTALLATION.md) | Setup project backend dan frontend dari awal |
-| [🏗️ ARCHITECTURE.md](docs/ARCHITECTURE.md) | Arsitektur sistem, alur data, dan komponen utama |
-| [🗄️ DATABASE.md](docs/DATABASE.md) | Skema tabel, tipe data, dan relasi database |
-| [🔌 API.md](docs/API.md) | Referensi endpoint REST API beserta contoh request/response |
-| [✨ FEATURES.md](docs/FEATURES.md) | Penjelasan fitur dan alur penggunaan sistem |
-| [💻 DEVELOPMENT.md](docs/DEVELOPMENT.md) | Panduan pengembangan fitur baru untuk developer |
-| [🚀 DEPLOYMENT.md](docs/DEPLOYMENT.md) | Panduan deploy aplikasi ke server production |
+|---|---|
+| [API Reference](docs/API.md) | Semua endpoint REST API dengan contoh request/response |
+| [Arsitektur](docs/ARCHITECTURE.md) | Struktur kode, design patterns, dan alur data |
+| [Database](docs/DATABASE.md) | Schema tabel, ERD, dan relasi |
+| [Docker](docs/DOCKER.md) | Panduan lengkap Docker & Docker Compose |
+| [Kubernetes](docs/KUBERNETES.md) | Panduan deploy ke Kubernetes |
+| [Deployment](docs/DEPLOYMENT.md) | Deploy ke Railway (gratis) |
+| [Development](docs/DEVELOPMENT.md) | Setup development lokal |
+| [Fitur](docs/FEATURES.md) | Dokumentasi semua fitur |
 
 ---
 
 ## 📄 Lisensi
 
-Proyek ini dilisensikan di bawah [MIT License](LICENSE).
+[MIT License](LICENSE)

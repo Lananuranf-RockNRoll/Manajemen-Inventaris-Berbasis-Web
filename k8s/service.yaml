@@ -1,0 +1,58 @@
+---
+# MySQL — ClusterIP (internal only)
+apiVersion: v1
+kind: Service
+metadata:
+  name: invensys-mysql
+  namespace: default
+  labels:
+    app: invensys
+    component: mysql
+spec:
+  selector:
+    app: invensys
+    component: mysql
+  ports:
+    - port: 3306
+      targetPort: 3306
+  type: ClusterIP
+
+---
+# PHP-FPM — ClusterIP (internal, accessed by nginx)
+apiVersion: v1
+kind: Service
+metadata:
+  name: php
+  namespace: default
+  labels:
+    app: invensys
+    component: backend
+spec:
+  selector:
+    app: invensys
+    component: backend
+  ports:
+    - port: 9000
+      targetPort: 9000
+  type: ClusterIP
+
+---
+# Nginx — NodePort (accessible dari luar cluster)
+apiVersion: v1
+kind: Service
+metadata:
+  name: invensys-nginx
+  namespace: default
+  labels:
+    app: invensys
+    component: nginx
+spec:
+  selector:
+    app: invensys
+    component: nginx
+  ports:
+    - name: http
+      port: 80
+      targetPort: 80
+      nodePort: 30080
+  type: NodePort

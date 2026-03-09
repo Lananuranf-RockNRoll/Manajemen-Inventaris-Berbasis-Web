@@ -1,0 +1,225 @@
+---
+# ─── PersistentVolumeClaim untuk MySQL ────────────────────────────────────────
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mysql-pvc
+  namespace: default
+  labels:
+    app: invensys
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+
+---
+# ─── MySQL Deployment ──────────────────────────────────────────────────────────
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: invensys-mysql
+  namespace: default
+  labels:
+    app: invensys
+    component: mysql
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: invensys
+      component: mysql
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: invensys
+        component: mysql
+    spec:
+      containers:
+        - name: mysql
+          image: mysql:8.0
+          ports:
+            - containerPort: 3306
+          envFrom:
+            - secretRef:
+                name: invensys-mysql-secret
+          livenessProbe:
+            exec:
+              command: ["mysqladmin", "ping", "-h", "localhost", "-u", "root", "--password=$(MYSQL_ROOT_PASSWORD)"]
+            initialDelaySeconds: 40
+            periodSeconds: 15
+            timeoutSeconds: 5
+            failureThreshold: 5
+          readinessProbe:
+            exec:
+              command: ["mysqladmin", "ping", "-h", "localhost", "-u", "root", "--password=$(MYSQL_ROOT_PASSWORD)"]
+            initialDelaySeconds: 20
+            periodSeconds: 5
+            timeoutSeconds: 3
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "250m"
+            limits:
+              memory: "1Gi"
+              cpu: "500m"
+          volumeMounts:
+            - name: mysql-storage
+              mountPath: /var/lib/mysql
+      volumes:
+        - name: mysql-storage
+          persistentVolumeClaim:
+            claimName: mysql-pvc
+
+---
+# ─── PHP-FPM Backend Deployment ───────────────────────────────────────────────
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: invensys-backend
+  namespace: default
+  labels:
+    app: invensys
+    component: backend
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: invensys
+      component: backend
+  template:
+    metadata:
+      labels:
+        app: invensys
+        component: backend
+    spec:
+      containers:
+        - name: php
+          image: invensys-backend:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 9000
+          envFrom:
+            - configMapRef:
+                name: invensys-config
+            - secretRef:
+                name: invensys-secret
+          livenessProbe:
+            tcpSocket:
+              port: 9000
+            initialDelaySeconds: 60
+            periodSeconds: 15
+            failureThreshold: 3
+          readinessProbe:
+            tcpSocket:
+              port: 9000
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+          volumeMounts:
+            - name: storage
+              mountPath: /var/www/html/storage/app
+            - name: logs
+              mountPath: /var/www/html/storage/logs
+      volumes:
+        - name: storage
+          emptyDir: {}
+        - name: logs
+          emptyDir: {}
+
+---
+# ─── Nginx + Frontend Deployment ─────────────────────────────────────────────
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: invensys-nginx
+  namespace: default
+  labels:
+    app: invensys
+    component: nginx
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: invensys
+      component: nginx
+  template:
+    metadata:
+      labels:
+        app: invensys
+        component: nginx
+    spec:
+      containers:
+        - name: nginx
+          image: invensys-nginx:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 80
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 10
+            periodSeconds: 15
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          resources:
+            requests:
+              memory: "64Mi"
+              cpu: "50m"
+            limits:
+              memory: "128Mi"
+              cpu: "200m"
+
+---
+# ─── Queue Worker Deployment ──────────────────────────────────────────────────
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: invensys-queue
+  namespace: default
+  labels:
+    app: invensys
+    component: queue
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: invensys
+      component: queue
+  template:
+    metadata:
+      labels:
+        app: invensys
+        component: queue
+    spec:
+      containers:
+        - name: queue
+          image: invensys-backend:latest
+          imagePullPolicy: IfNotPresent
+          command: ["php", "artisan", "queue:work", "--tries=3", "--timeout=90", "--sleep=3"]
+          envFrom:
+            - configMapRef:
+                name: invensys-config
+            - secretRef:
+                name: invensys-secret
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "256Mi"
+              cpu: "300m"

@@ -6,10 +6,13 @@ use App\Models\Inventory;
 use App\Models\Transaction;
 use Exception;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class InventoryService
 {
     /**
+     * Deduct stock for each item in a shipped transaction.
+     *
      * @throws Exception
      */
     public function deductStock(Transaction $transaction): void
@@ -19,13 +22,14 @@ class InventoryService
                 $inventory = $this->findInventoryOrFail(
                     productId: $item->product_id,
                     warehouseId: $transaction->warehouse_id,
-                    notFoundMessage: 'Produk tidak tersedia di gudang ini. Silakan cek inventaris terlebih dahulu.'
+                    notFoundMessage: "Produk '{$item->product->name}' tidak tersedia di gudang ini."
                 );
 
                 $this->ensureSufficientStock(
                     inventory: $inventory,
                     requiredQty: $item->quantity,
-                    errorMessage: "Stok tidak cukup untuk produk: {$item->product->name}. Tersedia: {$inventory->qty_available}, Dibutuhkan: {$item->quantity}"
+                    errorMessage: "Stok tidak cukup untuk '{$item->product->name}'. "
+                        . "Tersedia: {$inventory->qty_available}, Dibutuhkan: {$item->quantity}."
                 );
 
                 $inventory->decrement('qty_on_hand', $item->quantity);
@@ -33,19 +37,31 @@ class InventoryService
         });
     }
 
+    /**
+     * Restore stock when a shipped transaction is canceled.
+     */
     public function restoreStock(Transaction $transaction): void
     {
         DB::transaction(function () use ($transaction): void {
             foreach ($transaction->items as $item) {
-                Inventory::query()
+                $affected = Inventory::query()
                     ->where('product_id', $item->product_id)
                     ->where('warehouse_id', $transaction->warehouse_id)
                     ->increment('qty_on_hand', $item->quantity);
+
+                if ($affected === 0) {
+                    Log::warning('InventoryService::restoreStock — inventory record not found', [
+                        'product_id'   => $item->product_id,
+                        'warehouse_id' => $transaction->warehouse_id,
+                    ]);
+                }
             }
         });
     }
 
     /**
+     * Transfer stock between two warehouses.
+     *
      * @throws Exception
      */
     public function transferStock(
@@ -58,42 +74,47 @@ class InventoryService
             throw new Exception('Gudang asal dan tujuan tidak boleh sama.');
         }
 
+        if ($qty <= 0) {
+            throw new Exception('Jumlah transfer harus lebih dari 0.');
+        }
+
         DB::transaction(function () use ($productId, $fromWarehouseId, $toWarehouseId, $qty): void {
-            $sourceInventory = $this->findInventoryOrFail(
+            $source = $this->findInventoryOrFail(
                 productId: $productId,
                 warehouseId: $fromWarehouseId,
-                notFoundMessage: 'Stok sumber tidak ditemukan.'
+                notFoundMessage: 'Stok sumber tidak ditemukan di gudang asal.'
             );
 
             $this->ensureSufficientStock(
-                inventory: $sourceInventory,
+                inventory: $source,
                 requiredQty: $qty,
-                errorMessage: "Stok tidak cukup untuk transfer. Tersedia: {$sourceInventory->qty_available}, Dibutuhkan: {$qty}"
+                errorMessage: "Stok tidak cukup untuk transfer. "
+                    . "Tersedia: {$source->qty_available}, Dibutuhkan: {$qty}."
             );
 
-            $sourceInventory->decrement('qty_on_hand', $qty);
+            $source->decrement('qty_on_hand', $qty);
 
-            $destinationInventory = Inventory::query()
+            $destination = Inventory::query()
                 ->where('product_id', $productId)
                 ->where('warehouse_id', $toWarehouseId)
                 ->first();
 
-            if ($destinationInventory) {
-                $destinationInventory->increment('qty_on_hand', $qty);
-
-                return;
+            if ($destination) {
+                $destination->increment('qty_on_hand', $qty);
+            } else {
+                Inventory::create([
+                    'product_id'   => $productId,
+                    'warehouse_id' => $toWarehouseId,
+                    'qty_on_hand'  => $qty,
+                    'qty_reserved' => 0,
+                    'min_stock'    => $source->min_stock,
+                    'max_stock'    => $source->max_stock,
+                ]);
             }
-
-            Inventory::create([
-                'product_id' => $productId,
-                'warehouse_id' => $toWarehouseId,
-                'qty_on_hand' => $qty,
-                'qty_reserved' => 0,
-                'min_stock' => $sourceInventory->min_stock,
-                'max_stock' => $sourceInventory->max_stock,
-            ]);
         });
     }
+
+    // ── Private helpers ─────────────────────────────────────────────────────────
 
     /**
      * @throws Exception

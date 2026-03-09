@@ -7,12 +7,13 @@ use App\Http\Requests\TransferInventoryRequest;
 use App\Http\Resources\InventoryResource;
 use App\Models\Inventory;
 use App\Services\InventoryService;
+use Exception;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class InventoryController extends Controller
 {
-    public function __construct(private InventoryService $inventoryService)
+    public function __construct(private readonly InventoryService $inventoryService)
     {
     }
 
@@ -24,15 +25,15 @@ class InventoryController extends Controller
     {
         $inventory = Inventory::with(['product.category', 'warehouse'])
             ->when($request->warehouse_id, fn ($q) => $q->byWarehouse((int) $request->warehouse_id))
-            ->when($request->product_id,   fn ($q) => $q->where('product_id', $request->product_id))
-            ->when($request->low_stock,    fn ($q) => $q->lowStock())
-            ->paginate($request->per_page ?? 20);
+            ->when($request->product_id,   fn ($q) => $q->where('product_id', (int) $request->product_id))
+            ->when($request->boolean('low_stock'), fn ($q) => $q->lowStock())
+            ->paginate($request->integer('per_page', 20));
 
         return InventoryResource::collection($inventory)->response();
     }
 
     /**
-     * GET /api/inventory/{id}
+     * GET /api/inventory/{inventory}
      */
     public function show(Inventory $inventory): JsonResponse
     {
@@ -42,8 +43,8 @@ class InventoryController extends Controller
     }
 
     /**
-     * PUT /api/inventory/{id}
-     * Update stock manually (e.g., restock)
+     * PUT /api/inventory/{inventory}
+     * Manual restock / update.
      */
     public function update(Request $request, Inventory $inventory): JsonResponse
     {
@@ -57,11 +58,10 @@ class InventoryController extends Controller
         $inventory->update($validated);
 
         if (isset($validated['qty_on_hand'])) {
-            $inventory->last_restocked_at = now();
-            $inventory->save();
+            $inventory->update(['last_restocked_at' => now()]);
         }
 
-        return (new InventoryResource($inventory->load(['product', 'warehouse'])))->response();
+        return (new InventoryResource($inventory->fresh(['product', 'warehouse'])))->response();
     }
 
     /**
@@ -69,14 +69,18 @@ class InventoryController extends Controller
      */
     public function transfer(TransferInventoryRequest $request): JsonResponse
     {
-        $this->inventoryService->transferStock(
-            productId:       $request->product_id,
-            fromWarehouseId: $request->from_warehouse_id,
-            toWarehouseId:   $request->to_warehouse_id,
-            qty:             $request->quantity
-        );
+        try {
+            $this->inventoryService->transferStock(
+                productId:       $request->integer('product_id'),
+                fromWarehouseId: $request->integer('from_warehouse_id'),
+                toWarehouseId:   $request->integer('to_warehouse_id'),
+                qty:             $request->integer('quantity'),
+            );
 
-        return response()->json(['message' => 'Transfer stok berhasil.']);
+            return response()->json(['message' => 'Transfer stok berhasil.']);
+        } catch (Exception $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
     }
 
     /**
@@ -87,7 +91,7 @@ class InventoryController extends Controller
         $inventory = Inventory::with(['product.category', 'warehouse'])
             ->lowStock()
             ->when($request->warehouse_id, fn ($q) => $q->byWarehouse((int) $request->warehouse_id))
-            ->paginate($request->per_page ?? 20);
+            ->paginate($request->integer('per_page', 20));
 
         return InventoryResource::collection($inventory)->response();
     }

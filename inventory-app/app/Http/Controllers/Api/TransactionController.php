@@ -7,12 +7,13 @@ use App\Http\Requests\StoreTransactionRequest;
 use App\Http\Resources\TransactionResource;
 use App\Models\Transaction;
 use App\Services\TransactionService;
+use Exception;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class TransactionController extends Controller
 {
-    public function __construct(private TransactionService $transactionService)
+    public function __construct(private readonly TransactionService $transactionService)
     {
     }
 
@@ -30,7 +31,7 @@ class TransactionController extends Controller
                 fn ($q) => $q->dateRange($request->from, $request->to)
             )
             ->latest('order_date')
-            ->paginate($request->per_page ?? 20);
+            ->paginate($request->integer('per_page', 20));
 
         return TransactionResource::collection($transactions)->response();
     }
@@ -40,15 +41,19 @@ class TransactionController extends Controller
      */
     public function store(StoreTransactionRequest $request): JsonResponse
     {
-        $transaction = $this->transactionService->createOrder($request->validated());
+        try {
+            $transaction = $this->transactionService->createOrder($request->validated());
 
-        return (new TransactionResource(
-            $transaction->load(['customer', 'warehouse', 'items.product'])
-        ))->response()->setStatusCode(201);
+            return (new TransactionResource(
+                $transaction->load(['customer', 'warehouse', 'items.product'])
+            ))->response()->setStatusCode(201);
+        } catch (Exception $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
     }
 
     /**
-     * GET /api/transactions/{id}
+     * GET /api/transactions/{transaction}
      */
     public function show(Transaction $transaction): JsonResponse
     {
@@ -58,12 +63,12 @@ class TransactionController extends Controller
     }
 
     /**
-     * PUT /api/transactions/{id}
+     * PUT /api/transactions/{transaction}
      */
     public function update(Request $request, Transaction $transaction): JsonResponse
     {
         $validated = $request->validate([
-            'notes' => 'nullable|string',
+            'notes' => 'nullable|string|max:1000',
         ]);
 
         $transaction->update($validated);
@@ -72,8 +77,8 @@ class TransactionController extends Controller
     }
 
     /**
-     * DELETE /api/transactions/{id}
-     * Only allowed if status is pending
+     * DELETE /api/transactions/{transaction}
+     * Only allowed when status is pending.
      */
     public function destroy(Transaction $transaction): JsonResponse
     {
@@ -90,7 +95,7 @@ class TransactionController extends Controller
     }
 
     /**
-     * PATCH /api/transactions/{id}/status
+     * PATCH /api/transactions/{transaction}/status
      */
     public function updateStatus(Request $request, Transaction $transaction): JsonResponse
     {
@@ -98,11 +103,12 @@ class TransactionController extends Controller
             'status' => 'required|in:pending,processing,shipped,delivered,canceled',
         ]);
 
-        $transaction = $this->transactionService->updateStatus(
-            $transaction,
-            $request->status
-        );
+        try {
+            $transaction = $this->transactionService->updateStatus($transaction, $request->status);
 
-        return (new TransactionResource($transaction))->response();
+            return (new TransactionResource($transaction))->response();
+        } catch (Exception $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
     }
 }

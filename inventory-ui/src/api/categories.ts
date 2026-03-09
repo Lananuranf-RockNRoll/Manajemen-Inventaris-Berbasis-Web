@@ -1,4 +1,4 @@
-import api from './index.ts'
+import api from './index'
 
 export const categoriesApi = {
   list: (params?: Record<string, any>) =>
