@@ -6,14 +6,15 @@ Dokumentasi arsitektur sistem InvenSys.
 
 ## Gambaran Umum
 
-InvenSys menggunakan arsitektur **decoupled** — backend API dan frontend SPA terpisah, namun di-serve dari satu Nginx container di production.
+InvenSys menggunakan arsitektur **decoupled** — backend API dan frontend SPA terpisah, namun di-serve dari satu Nginx
+container di production.
 
 ```
 Browser
   │ HTTP :80
   ▼
 ┌─────────────────────────────────────────────┐
-│              Nginx Container                 │
+│              Nginx Container                |
 │  ┌───────────────────┐  ┌─────────────────┐ │
 │  │   Vue 3 SPA       │  │ /api/* → PHP-FPM│ │
 │  │   (static files)  │  │  FastCGI proxy  │ │
@@ -21,7 +22,7 @@ Browser
 └─────────────────────────────────────────────┘
   │ FastCGI :9000
   ▼
-┌─────────────────────────────────────────────┐
+┌─────────────────────────────────────────────
 │         PHP-FPM Container (Laravel 12)       │
 │                                              │
 │  Route → Middleware → Controller → Service   │
@@ -143,14 +144,14 @@ inventory-ui/src/
 ```typescript
 // stores/auth.ts
 state: {
-  user: User | null       // Data user login
-  token: string | null    // Bearer token
+    user: User | null       // Data user login
+    token: string | null    // Bearer token
 }
 // Keduanya disimpan di localStorage untuk persist
 
 actions:
-  login()   // POST /api/auth/login → simpan token & user
-  logout()  // POST /api/auth/logout → hapus token, redirect /login
+    login()   // POST /api/auth/login → simpan token & user
+logout()  // POST /api/auth/logout → hapus token, redirect /login
 
 // Idle timeout: auto-logout setelah 3 menit tidak aktif
 // Activity reset setiap mousemove, keypress, click
@@ -166,8 +167,8 @@ config.headers.Authorization = `Bearer ${token}`
 
 // Response: jika 401 → auto redirect ke /login
 if (error.response?.status === 401) {
-  authStore.logout()
-  router.push('/login')
+    authStore.logout()
+    router.push('/login')
 }
 ```
 
@@ -199,16 +200,16 @@ Listener berjalan **synchronous** untuk memastikan konsistensi data stok.
 
 ## Security
 
-| Aspek | Implementasi |
-|---|---|
-| Authentication | Laravel Sanctum (Bearer token) |
-| Authorization | `CheckRole` middleware per route group |
-| CORS | `CorsMiddleware` — handle preflight OPTIONS |
-| JSON Response | `ForceJsonResponse` — semua API response pasti JSON |
-| Soft Delete | Products menggunakan soft delete |
-| Input Validation | Form Request di semua endpoint write |
-| Password | bcrypt hashing (Laravel default) |
-| Idle Timeout | 3 menit auto-logout di frontend |
+| Aspek            | Implementasi                                        |
+|------------------|-----------------------------------------------------|
+| Authentication   | Laravel Sanctum (Bearer token)                      |
+| Authorization    | `CheckRole` middleware per route group              |
+| CORS             | `CorsMiddleware` — handle preflight OPTIONS         |
+| JSON Response    | `ForceJsonResponse` — semua API response pasti JSON |
+| Soft Delete      | Products menggunakan soft delete                    |
+| Input Validation | Form Request di semua endpoint write                |
+| Password         | bcrypt hashing (Laravel default)                    |
+| Idle Timeout     | 3 menit auto-logout di frontend                     |
 
 ---
 

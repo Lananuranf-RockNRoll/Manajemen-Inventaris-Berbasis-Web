@@ -76,7 +76,6 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('customers',               [CustomerController::class, 'store']);
         Route::put('customers/{customer}',     [CustomerController::class, 'update']);
     });
-    // Credit management: manager+
     Route::middleware('role:admin,manager')->group(function () {
         Route::patch('customers/{customer}/credit',       [CustomerController::class, 'adjustCredit']);
         Route::post('customers/{customer}/reset-credit',  [CustomerController::class, 'resetCreditUsed']);
@@ -118,10 +117,10 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // ── Reports ───────────────────────────────────────────────────────────────
     Route::prefix('reports')->group(function () {
-        Route::get('/inventory/excel', [ReportController::class, 'inventoryExcel']);
-        Route::get('/inventory/pdf',   [ReportController::class, 'inventoryPdf']);
-        Route::get('/sales/excel',     [ReportController::class, 'salesExcel']);
-        Route::get('/sales/pdf',       [ReportController::class, 'salesPdf']);
-        Route::get('/dashboard/pdf',   [ReportController::class, 'dashboardPdf']);
+        Route::get('/inventory/excel',                    [ReportController::class, 'inventoryExcel']);
+        Route::get('/sales/excel',                        [ReportController::class, 'salesExcel']);
+        Route::get('/sales/pdf',                          [ReportController::class, 'salesPdf']);
+        Route::get('/dashboard/pdf',                      [ReportController::class, 'dashboardPdf']);
+        Route::get('/transactions/{transaction}/invoice', [ReportController::class, 'invoicePdf']);
     });
 });

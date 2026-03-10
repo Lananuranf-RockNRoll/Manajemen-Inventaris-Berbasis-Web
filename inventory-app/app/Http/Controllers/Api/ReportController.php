@@ -26,21 +26,19 @@ class ReportController extends Controller
         return Excel::download(new InventoryExport($request->warehouse_id), $filename);
     }
 
-    public function inventoryPdf(Request $request)
+    // ─── Invoice per Transaksi ────────────────────────────────────────────
+
+    public function invoicePdf(Transaction $transaction)
     {
-        $items = Inventory::with(['product.category', 'warehouse'])
-            ->when($request->warehouse_id, fn($q) => $q->where('warehouse_id', $request->warehouse_id))
-            ->orderBy('warehouse_id')
-            ->get();
+        $transaction->load(['customer', 'warehouse', 'items.product']);
 
-        $warehouseName = $request->warehouse_id
-            ? Warehouse::find($request->warehouse_id)?->name
-            : null;
-
-        $pdf = Pdf::loadView('reports.inventory-pdf', compact('items', 'warehouseName'))
+        $pdf = Pdf::loadView('reports.invoice-pdf', compact('transaction'))
             ->setPaper('a4');
 
-        return $pdf->download('laporan-inventaris-' . now()->format('Ymd-His') . '.pdf');
+        $filename = 'invoice-' . str_replace(['/', ' '], '-', $transaction->order_number)
+            . '-' . now()->format('Ymd') . '.pdf';
+
+        return $pdf->download($filename);
     }
 
     // ─── Laporan Penjualan ────────────────────────────────────────────────

@@ -10,10 +10,6 @@
           <FileSpreadsheet class="w-3.5 h-3.5" />
           <span>{{ exporting === 'excel' ? '...' : 'Excel' }}</span>
         </button>
-        <button @click="exportPdf" :disabled="!!exporting" class="btn-export-pdf">
-          <FileText class="w-3.5 h-3.5" />
-          <span>{{ exporting === 'pdf' ? '...' : 'PDF' }}</span>
-        </button>
         <button v-if="auth.canCreate" @click="openCreate" class="btn-primary">
           <Plus class="w-4 h-4" />
           <span class="hidden sm:inline">Buat Order</span>
@@ -66,10 +62,17 @@
                 </td>
                 <td class="td text-center"><span :class="statusClass(trx.status)">{{ trx.status }}</span></td>
                 <td class="td text-center">
-                  <div class="flex items-center justify-center gap-2">
-                    <button @click="openDetail(trx)" class="btn-icon text-zinc-400 hover:text-indigo-400" title="Detail"><Eye class="w-3.5 h-3.5" /></button>
+                  <div class="flex items-center justify-center gap-1.5">
+                    <button @click="openDetail(trx)" class="btn-icon text-zinc-400 hover:text-indigo-400" title="Detail">
+                      <Eye class="w-3.5 h-3.5" />
+                    </button>
+                    <button @click="downloadInvoice(trx)" :disabled="downloadingInvoice === trx.id"
+                      class="btn-icon text-zinc-400 hover:text-emerald-400" title="Download Invoice PDF">
+                      <FileDown class="w-3.5 h-3.5" v-if="downloadingInvoice !== trx.id" />
+                      <Loader2 class="w-3.5 h-3.5 animate-spin" v-else />
+                    </button>
                     <button v-if="auth.canEdit && ['pending','processing','shipped'].includes(trx.status)"
-                      @click="openUpdateStatus(trx)" class="btn-icon text-zinc-400 hover:text-emerald-400" title="Update Status">
+                      @click="openUpdateStatus(trx)" class="btn-icon text-zinc-400 hover:text-amber-400" title="Update Status">
                       <RefreshCw class="w-3.5 h-3.5" />
                     </button>
                   </div>
@@ -94,8 +97,13 @@
               </div>
               <div class="flex gap-1 shrink-0">
                 <button @click="openDetail(trx)" class="btn-icon text-zinc-400 hover:text-indigo-400"><Eye class="w-4 h-4" /></button>
+                <button @click="downloadInvoice(trx)" :disabled="downloadingInvoice === trx.id"
+                  class="btn-icon text-zinc-400 hover:text-emerald-400" title="Invoice">
+                  <FileDown class="w-4 h-4" v-if="downloadingInvoice !== trx.id" />
+                  <Loader2 class="w-4 h-4 animate-spin" v-else />
+                </button>
                 <button v-if="auth.canEdit && ['pending','processing','shipped'].includes(trx.status)"
-                  @click="openUpdateStatus(trx)" class="btn-icon text-zinc-400 hover:text-emerald-400">
+                  @click="openUpdateStatus(trx)" class="btn-icon text-zinc-400 hover:text-amber-400">
                   <RefreshCw class="w-4 h-4" />
                 </button>
               </div>
@@ -219,7 +227,13 @@
               </table>
             </div>
           </div>
-          <div class="flex justify-end mt-4">
+          <div class="flex items-center justify-end gap-2 mt-4">
+            <button @click="downloadInvoice(detailTrx)" :disabled="downloadingInvoice === detailTrx.id"
+              class="btn-secondary flex items-center gap-2">
+              <FileDown class="w-3.5 h-3.5" v-if="downloadingInvoice !== detailTrx.id" />
+              <Loader2 class="w-3.5 h-3.5 animate-spin" v-else />
+              Invoice PDF
+            </button>
             <button @click="showDetailModal = false" class="btn-secondary">Tutup</button>
           </div>
         </div>
@@ -248,7 +262,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { Plus, Eye, RefreshCw, X, FileSpreadsheet, FileText } from 'lucide-vue-next'
+import { Plus, Eye, RefreshCw, X, FileSpreadsheet, FileDown, Loader2 } from 'lucide-vue-next'
 import { transactionsApi } from '@/api/transactions'
 import { customersApi }    from '@/api/customers'
 import { warehousesApi }   from '@/api/warehouses'
@@ -258,25 +272,31 @@ import { useAuthStore }    from '@/stores/auth'
 import type { Transaction, Customer, Warehouse, Product, PaginationMeta } from '@/types'
 
 const auth = useAuthStore()
-const transactions = ref<Transaction[]>([])
-const customers    = ref<Customer[]>([])
-const warehouses   = ref<Warehouse[]>([])
-const products     = ref<Product[]>([])
-const meta         = ref<PaginationMeta | null>(null)
-const loading      = ref(true)
-const exporting    = ref<'excel' | 'pdf' | null>(null)
-const statusFilter = ref('')
-const fromDate     = ref('')
-const toDate       = ref('')
-const showCreateModal = ref(false)
-const showDetailModal = ref(false)
-const showStatusModal = ref(false)
-const detailTrx    = ref<Transaction | null>(null)
-const updatingTrx  = ref<Transaction | null>(null)
-const submitting   = ref(false)
-const formError    = ref('')
+const transactions      = ref<Transaction[]>([])
+const customers         = ref<Customer[]>([])
+const warehouses        = ref<Warehouse[]>([])
+const products          = ref<Product[]>([])
+const meta              = ref<PaginationMeta | null>(null)
+const loading           = ref(true)
+const exporting         = ref<'excel' | null>(null)
+const downloadingInvoice = ref<number | null>(null)
+const statusFilter      = ref('')
+const fromDate          = ref('')
+const toDate            = ref('')
+const showCreateModal   = ref(false)
+const showDetailModal   = ref(false)
+const showStatusModal   = ref(false)
+const detailTrx         = ref<Transaction | null>(null)
+const updatingTrx       = ref<Transaction | null>(null)
+const submitting        = ref(false)
+const formError         = ref('')
 
-const defaultCreateForm = () => ({ customer_id: '' as number | '', warehouse_id: '' as number | '', notes: '', items: [{ product_id: '' as number | '', quantity: 1, unit_price: 0 }] })
+const defaultCreateForm = () => ({
+  customer_id:  '' as number | '',
+  warehouse_id: '' as number | '',
+  notes: '',
+  items: [{ product_id: '' as number | '', quantity: 1, unit_price: 0 }],
+})
 const createForm = ref(defaultCreateForm())
 
 const visiblePages = computed((): number[] => {
@@ -292,7 +312,10 @@ function fmtUSD(val: string | number): string {
 }
 
 function statusClass(status: string): string {
-  const map: Record<string, string> = { pending: 'badge-amber', processing: 'badge-blue', shipped: 'badge-indigo', delivered: 'badge-green', canceled: 'badge-red' }
+  const map: Record<string, string> = {
+    pending: 'badge-amber', processing: 'badge-blue',
+    shipped: 'badge-indigo', delivered: 'badge-green', canceled: 'badge-red',
+  }
   return map[status] ?? 'badge-zinc'
 }
 
@@ -308,51 +331,89 @@ function nextStatuses(current: string): { value: string; label: string; class: s
 async function fetchTransactions(page = 1): Promise<void> {
   loading.value = true
   try {
-    const res = await transactionsApi.list({ page, status: statusFilter.value || undefined, from: fromDate.value || undefined, to: toDate.value || undefined, per_page: 20 })
-    transactions.value = res.data.data; meta.value = res.data.meta
+    const res = await transactionsApi.list({
+      page,
+      status: statusFilter.value || undefined,
+      from: fromDate.value || undefined,
+      to: toDate.value || undefined,
+      per_page: 20,
+    })
+    transactions.value = res.data.data
+    meta.value = res.data.meta
   } finally { loading.value = false }
 }
 
 async function exportExcel(): Promise<void> {
   exporting.value = 'excel'
-  try { const res = await reportsApi.salesExcel({ from: fromDate.value || undefined, to: toDate.value || undefined, status: statusFilter.value || undefined }); downloadBlob(res.data, `laporan-penjualan-${new Date().toISOString().slice(0, 10)}.xlsx`) }
-  catch { alert('Gagal export Excel') } finally { exporting.value = null }
+  try {
+    const res = await reportsApi.salesExcel({
+      from: fromDate.value || undefined,
+      to: toDate.value || undefined,
+      status: statusFilter.value || undefined,
+    })
+    downloadBlob(res.data, `laporan-penjualan-${new Date().toISOString().slice(0, 10)}.xlsx`)
+  } catch { alert('Gagal export Excel') }
+  finally { exporting.value = null }
 }
 
-async function exportPdf(): Promise<void> {
-  exporting.value = 'pdf'
-  try { const res = await reportsApi.salesPdf({ from: fromDate.value || undefined, to: toDate.value || undefined, status: statusFilter.value || undefined }); downloadBlob(res.data, `laporan-penjualan-${new Date().toISOString().slice(0, 10)}.pdf`) }
-  catch { alert('Gagal export PDF') } finally { exporting.value = null }
+async function downloadInvoice(trx: Transaction): Promise<void> {
+  downloadingInvoice.value = trx.id
+  try {
+    const res = await reportsApi.invoicePdf(trx.id)
+    const orderNum = (trx.order_number ?? `trx-${trx.id}`).replace(/[^a-z0-9-]/gi, '-')
+    downloadBlob(res.data, `invoice-${orderNum}.pdf`)
+  } catch { alert('Gagal download invoice') }
+  finally { downloadingInvoice.value = null }
 }
 
 function openCreate(): void { createForm.value = defaultCreateForm(); formError.value = ''; showCreateModal.value = true }
+
 async function openDetail(trx: Transaction): Promise<void> {
-  try { const res = await transactionsApi.show(trx.id); detailTrx.value = res.data.data; showDetailModal.value = true }
-  catch { alert('Gagal memuat detail transaksi') }
+  try {
+    const res = await transactionsApi.show(trx.id)
+    detailTrx.value = res.data.data
+    showDetailModal.value = true
+  } catch { alert('Gagal memuat detail transaksi') }
 }
+
 function openUpdateStatus(trx: Transaction): void { updatingTrx.value = trx; showStatusModal.value = true }
 function addItem(): void { createForm.value.items.push({ product_id: '', quantity: 1, unit_price: 0 }) }
 function removeItem(i: number): void { if (createForm.value.items.length <= 1) return; createForm.value.items.splice(i, 1) }
 
 async function handleCreate(): Promise<void> {
   submitting.value = true; formError.value = ''
-  try { await transactionsApi.create(createForm.value); showCreateModal.value = false; await fetchTransactions(1) }
-  catch (e: any) {
+  try {
+    await transactionsApi.create(createForm.value)
+    showCreateModal.value = false
+    await fetchTransactions(1)
+  } catch (e: any) {
     const errors = e.response?.data?.errors
-    formError.value = errors ? (Object.values(errors) as string[][]).flat().join(', ') : (e.response?.data?.message ?? 'Gagal membuat order')
+    formError.value = errors
+      ? (Object.values(errors) as string[][]).flat().join(', ')
+      : (e.response?.data?.message ?? 'Gagal membuat order')
   } finally { submitting.value = false }
 }
 
 async function handleUpdateStatus(status: string): Promise<void> {
   if (!updatingTrx.value) return
   submitting.value = true
-  try { await transactionsApi.updateStatus(updatingTrx.value.id, status); showStatusModal.value = false; await fetchTransactions(meta.value?.current_page ?? 1) }
-  catch (e: any) { alert(e.response?.data?.message ?? 'Gagal update status') }
+  try {
+    await transactionsApi.updateStatus(updatingTrx.value.id, status)
+    showStatusModal.value = false
+    await fetchTransactions(meta.value?.current_page ?? 1)
+  } catch (e: any) { alert(e.response?.data?.message ?? 'Gagal update status') }
   finally { submitting.value = false }
 }
 
 onMounted(async (): Promise<void> => {
-  const [, custRes, whRes, prodRes] = await Promise.all([fetchTransactions(), customersApi.list({ per_page: 200 }), warehousesApi.list({ per_page: 100 }), productsApi.list({ per_page: 200, active: 1 })])
-  customers.value = custRes.data.data; warehouses.value = whRes.data.data; products.value = prodRes.data.data
+  const [, custRes, whRes, prodRes] = await Promise.all([
+    fetchTransactions(),
+    customersApi.list({ per_page: 200 }),
+    warehousesApi.list({ per_page: 100 }),
+    productsApi.list({ per_page: 200, active: 1 }),
+  ])
+  customers.value = custRes.data.data
+  warehouses.value = whRes.data.data
+  products.value = prodRes.data.data
 })
 </script>

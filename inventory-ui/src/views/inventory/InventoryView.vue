@@ -8,13 +8,9 @@
         <p class="page-subtitle">{{ meta?.total ?? 0 }} item stok</p>
       </div>
       <div class="flex flex-wrap items-center gap-2 self-start sm:self-auto">
-        <button @click="exportExcel" :disabled="exporting !== null" class="btn-export-excel">
+        <button @click="exportExcel" :disabled="exporting" class="btn-export-excel">
           <FileSpreadsheet class="w-3.5 h-3.5" />
-          <span>{{ exporting === 'excel' ? 'Loading...' : 'Excel' }}</span>
-        </button>
-        <button @click="exportPdf" :disabled="exporting !== null" class="btn-export-pdf">
-          <FileText class="w-3.5 h-3.5" />
-          <span>{{ exporting === 'pdf' ? 'Loading...' : 'PDF' }}</span>
+          <span>{{ exporting ? 'Loading...' : 'Excel' }}</span>
         </button>
         <button v-if="auth.canTransfer" @click="openTransfer" class="btn-primary">
           <ArrowLeftRight class="w-4 h-4" />
@@ -238,7 +234,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { ArrowLeftRight, Pencil, FileSpreadsheet, FileText } from 'lucide-vue-next'
+import { ArrowLeftRight, Pencil, FileSpreadsheet } from 'lucide-vue-next'
 import { inventoryApi } from '@/api/inventory'
 import { warehousesApi } from '@/api/warehouses'
 import { productsApi } from '@/api/products'
@@ -248,19 +244,19 @@ import type { Inventory, Warehouse, Product, PaginationMeta } from '@/types'
 
 const auth = useAuthStore()
 
-const inventory        = ref<Inventory[]>([])
-const warehouses       = ref<Warehouse[]>([])
-const products         = ref<Product[]>([])
-const meta             = ref<PaginationMeta | null>(null)
-const loading          = ref(true)
-const exporting        = ref<'excel' | 'pdf' | null>(null)
-const warehouseFilter  = ref<number | ''>('')
-const lowStockOnly     = ref(false)
-const showUpdateModal  = ref(false)
+const inventory         = ref<Inventory[]>([])
+const warehouses        = ref<Warehouse[]>([])
+const products          = ref<Product[]>([])
+const meta              = ref<PaginationMeta | null>(null)
+const loading           = ref(true)
+const exporting         = ref(false)
+const warehouseFilter   = ref<number | ''>('')
+const lowStockOnly      = ref(false)
+const showUpdateModal   = ref(false)
 const showTransferModal = ref(false)
-const updatingInv      = ref<Inventory | null>(null)
-const submitting       = ref(false)
-const formError        = ref('')
+const updatingInv       = ref<Inventory | null>(null)
+const submitting        = ref(false)
+const formError         = ref('')
 
 const updateForm   = ref({ qty_on_hand: 0, min_stock: 10, max_stock: 1000 })
 const transferForm = ref({ product_id: '' as number | '', from_warehouse_id: '' as number | '', to_warehouse_id: '' as number | '', quantity: 1 })
@@ -290,21 +286,12 @@ async function fetchInventory(page = 1): Promise<void> {
 }
 
 async function exportExcel(): Promise<void> {
-  exporting.value = 'excel'
+  exporting.value = true
   try {
     const res = await reportsApi.inventoryExcel(warehouseFilter.value ? { warehouse_id: Number(warehouseFilter.value) } : undefined)
     downloadBlob(res.data, `laporan-inventaris-${new Date().toISOString().slice(0, 10)}.xlsx`)
   } catch { alert('Gagal export Excel') }
-  finally { exporting.value = null }
-}
-
-async function exportPdf(): Promise<void> {
-  exporting.value = 'pdf'
-  try {
-    const res = await reportsApi.inventoryPdf(warehouseFilter.value ? { warehouse_id: Number(warehouseFilter.value) } : undefined)
-    downloadBlob(res.data, `laporan-inventaris-${new Date().toISOString().slice(0, 10)}.pdf`)
-  } catch { alert('Gagal export PDF') }
-  finally { exporting.value = null }
+  finally { exporting.value = false }
 }
 
 function openUpdate(inv: Inventory): void {
