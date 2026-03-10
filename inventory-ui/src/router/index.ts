@@ -55,12 +55,17 @@ const router = createRouter({
           name: 'transactions',
           component: () => import('@/views/transactions/TransactionsView.vue'),
         },
+        {
+          path: 'users',
+          name: 'users',
+          component: () => import('@/views/users/UsersView.vue'),
+          meta: { adminOnly: true },
+        },
       ],
     },
   ],
 })
 
-// ✅ Fixed: gunakan return value, bukan next()
 router.beforeEach((to, _from) => {
   const auth = useAuthStore()
 
@@ -69,6 +74,11 @@ router.beforeEach((to, _from) => {
   }
 
   if (to.meta.guest && auth.isAuthenticated) {
+    return '/'
+  }
+
+  // Admin-only routes
+  if (to.meta.adminOnly && !auth.isAdmin) {
     return '/'
   }
 

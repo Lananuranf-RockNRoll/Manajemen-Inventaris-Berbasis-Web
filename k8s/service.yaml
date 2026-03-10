@@ -18,6 +18,25 @@ spec:
   type: ClusterIP
 
 ---
+# Redis — ClusterIP (internal only)
+apiVersion: v1
+kind: Service
+metadata:
+  name: invensys-redis
+  namespace: default
+  labels:
+    app: invensys
+    component: redis
+spec:
+  selector:
+    app: invensys
+    component: redis
+  ports:
+    - port: 6379
+      targetPort: 6379
+  type: ClusterIP
+
+---
 # PHP-FPM — ClusterIP (internal, accessed by nginx)
 apiVersion: v1
 kind: Service

@@ -1,7 +1,7 @@
 version: "3.9"
 
 # =============================================================
-# InvenSys — Full Docker Stack
+# InvenSys — Full Docker Stack with Redis
 # Usage: docker-compose up --build
 # =============================================================
 
@@ -23,19 +23,29 @@ services:
     ports:
       - "3306:3306"
     healthcheck:
-      test:
-        - CMD
-        - mysqladmin
-        - ping
-        - -h
-        - localhost
-        - -u
-        - root
-        - --password=${DB_ROOT_PASSWORD:-rootsecret123}
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "--password=${DB_ROOT_PASSWORD:-rootsecret123}"]
       interval: 10s
       timeout: 5s
       retries: 15
       start_period: 30s
+    networks:
+      - invensys_net
+
+  # ─── Redis (Cache + Queue) ────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: invensys_redis
+    restart: unless-stopped
+    command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru --save ""
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
     networks:
       - invensys_net
 
@@ -60,10 +70,15 @@ services:
       DB_DATABASE: ${DB_DATABASE:-inventory_system}
       DB_USERNAME: ${DB_USERNAME:-invensys}
       DB_PASSWORD: ${DB_PASSWORD:-invensys_pass123}
-      SESSION_DRIVER: database
-      QUEUE_CONNECTION: database
-      CACHE_STORE: database
-      FILESYSTEM_DISK: local
+      # Redis — cache & queue
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: null
+      SESSION_DRIVER: redis
+      QUEUE_CONNECTION: redis
+      CACHE_STORE: redis
+      CACHE_PREFIX: invensys_
+      # Mail
       MAIL_MAILER: ${MAIL_MAILER:-log}
       MAIL_HOST: ${MAIL_HOST:-}
       MAIL_PORT: ${MAIL_PORT:-587}
@@ -71,11 +86,14 @@ services:
       MAIL_PASSWORD: ${MAIL_PASSWORD:-}
       MAIL_FROM_ADDRESS: ${MAIL_FROM_ADDRESS:-noreply@invensys.app}
       MAIL_FROM_NAME: InvenSys
+      FILESYSTEM_DISK: local
     volumes:
       - app_storage:/var/www/html/storage/app
       - app_logs:/var/www/html/storage/logs
     depends_on:
       db:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     networks:
       - invensys_net
@@ -96,12 +114,12 @@ services:
     networks:
       - invensys_net
 
-  # ─── Queue Worker ─────────────────────────────────────────
+  # ─── Queue Worker (pakai Redis) ───────────────────────────
   queue:
     image: invensys-backend:latest
     container_name: invensys_queue
     restart: unless-stopped
-    command: ["php", "artisan", "queue:work", "--tries=3", "--timeout=90", "--sleep=3", "--memory=256"]
+    command: ["php", "artisan", "queue:work", "redis", "--tries=3", "--timeout=90", "--sleep=3", "--memory=256"]
     environment:
       APP_KEY: ${APP_KEY}
       APP_ENV: ${APP_ENV:-production}
@@ -112,8 +130,11 @@ services:
       DB_DATABASE: ${DB_DATABASE:-inventory_system}
       DB_USERNAME: ${DB_USERNAME:-invensys}
       DB_PASSWORD: ${DB_PASSWORD:-invensys_pass123}
-      QUEUE_CONNECTION: database
-      CACHE_STORE: database
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      QUEUE_CONNECTION: redis
+      CACHE_STORE: redis
+      CACHE_PREFIX: invensys_
       MAIL_MAILER: ${MAIL_MAILER:-log}
       MAIL_HOST: ${MAIL_HOST:-}
       MAIL_PORT: ${MAIL_PORT:-587}
@@ -125,10 +146,11 @@ services:
       - app_logs:/var/www/html/storage/logs
     depends_on:
       - php
+      - redis
     networks:
       - invensys_net
 
-  # ─── Scheduler (cron artisan) ──────────────────────────────
+  # ─── Scheduler ────────────────────────────────────────────
   scheduler:
     image: invensys-backend:latest
     container_name: invensys_scheduler
@@ -144,22 +166,27 @@ services:
       DB_DATABASE: ${DB_DATABASE:-inventory_system}
       DB_USERNAME: ${DB_USERNAME:-invensys}
       DB_PASSWORD: ${DB_PASSWORD:-invensys_pass123}
-      QUEUE_CONNECTION: database
-      CACHE_STORE: database
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      QUEUE_CONNECTION: redis
+      CACHE_STORE: redis
+      CACHE_PREFIX: invensys_
       MAIL_MAILER: ${MAIL_MAILER:-log}
-      MAIL_HOST: ${MAIL_HOST:-}
       MAIL_FROM_ADDRESS: ${MAIL_FROM_ADDRESS:-noreply@invensys.app}
     volumes:
       - app_storage:/var/www/html/storage/app
       - app_logs:/var/www/html/storage/logs
     depends_on:
       - php
+      - redis
     networks:
       - invensys_net
 
 # =============================================================
 volumes:
   db_data:
+    driver: local
+  redis_data:
     driver: local
   app_storage:
     driver: local

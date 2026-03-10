@@ -4,24 +4,25 @@ namespace App\Services;
 
 use App\Events\OrderCanceled;
 use App\Events\OrderShipped;
+use App\Models\Customer;
 use App\Models\Transaction;
 use Exception;
 use Illuminate\Support\Facades\DB;
 
 class TransactionService
 {
-    private const STATUS_PENDING = 'pending';
+    private const STATUS_PENDING    = 'pending';
     private const STATUS_PROCESSING = 'processing';
-    private const STATUS_SHIPPED = 'shipped';
-    private const STATUS_DELIVERED = 'delivered';
-    private const STATUS_CANCELED = 'canceled';
+    private const STATUS_SHIPPED    = 'shipped';
+    private const STATUS_DELIVERED  = 'delivered';
+    private const STATUS_CANCELED   = 'canceled';
 
     private const ALLOWED_TRANSITIONS = [
-        self::STATUS_PENDING => [self::STATUS_PROCESSING, self::STATUS_CANCELED],
+        self::STATUS_PENDING    => [self::STATUS_PROCESSING, self::STATUS_CANCELED],
         self::STATUS_PROCESSING => [self::STATUS_SHIPPED, self::STATUS_CANCELED],
-        self::STATUS_SHIPPED => [self::STATUS_DELIVERED, self::STATUS_CANCELED],
-        self::STATUS_DELIVERED => [],
-        self::STATUS_CANCELED => [],
+        self::STATUS_SHIPPED    => [self::STATUS_DELIVERED, self::STATUS_CANCELED],
+        self::STATUS_DELIVERED  => [],
+        self::STATUS_CANCELED   => [],
     ];
 
     /**
@@ -33,12 +34,25 @@ class TransactionService
             $items = $data['items'];
             unset($data['items']);
 
+            $totalAmount = $this->calculateTotalAmount($items);
+
+            // ── Credit validation ─────────────────────────────────────────────
+            if (isset($data['customer_id'])) {
+                $this->validateCustomerCredit($data['customer_id'], $totalAmount);
+            }
+
             $transaction = Transaction::create([
                 ...$data,
-                'total_amount' => $this->calculateTotalAmount($items),
+                'total_amount' => $totalAmount,
             ]);
 
             $this->createTransactionItems($transaction, $items);
+
+            // Tambah credit_used pada customer
+            if ($transaction->customer_id) {
+                Customer::where('id', $transaction->customer_id)
+                    ->increment('credit_used', $totalAmount);
+            }
 
             return $transaction;
         });
@@ -65,18 +79,54 @@ class TransactionService
                 event(new OrderShipped($transaction));
             }
 
-            if ($currentStatus === self::STATUS_SHIPPED && $newStatus === self::STATUS_CANCELED) {
-                event(new OrderCanceled($transaction));
+            if ($newStatus === self::STATUS_CANCELED) {
+                // Kembalikan credit_used ke customer
+                Customer::where('id', $transaction->customer_id)
+                    ->decrement('credit_used', (float) $transaction->total_amount);
+
+                if ($currentStatus === self::STATUS_SHIPPED) {
+                    event(new OrderCanceled($transaction));
+                }
             }
         });
 
         return $transaction->fresh();
     }
 
+    // ── Private ───────────────────────────────────────────────────────────────
+
+    /**
+     * Validate customer credit availability (in USD)
+     * @throws Exception
+     */
+    private function validateCustomerCredit(int $customerId, float $totalAmount): void
+    {
+        $customer = Customer::findOrFail($customerId);
+
+        if ($customer->status !== 'active') {
+            throw new Exception("Customer berstatus '{$customer->status}' tidak dapat melakukan pembelian.");
+        }
+
+        $creditAvailable = (float) $customer->credit_limit - (float) $customer->credit_used;
+
+        if ($totalAmount > $creditAvailable) {
+            throw new Exception(
+                "Kredit customer tidak mencukupi. " .
+                "Tersedia: \${$this->fmt($creditAvailable)}, " .
+                "Dibutuhkan: \${$this->fmt($totalAmount)}."
+            );
+        }
+    }
+
+    private function fmt(float $val): string
+    {
+        return number_format($val, 2);
+    }
+
     private function calculateTotalAmount(array $items): float
     {
         return (float) collect($items)->sum(
-            fn (array $item): float => $item['quantity'] * $item['unit_price']
+            fn(array $item): float => $item['quantity'] * $item['unit_price']
         );
     }
 
@@ -85,8 +135,9 @@ class TransactionService
         foreach ($items as $item) {
             $transaction->items()->create([
                 'product_id' => $item['product_id'],
-                'quantity' => $item['quantity'],
+                'quantity'   => $item['quantity'],
                 'unit_price' => $item['unit_price'],
+                'subtotal'   => $item['quantity'] * $item['unit_price'],
             ]);
         }
     }

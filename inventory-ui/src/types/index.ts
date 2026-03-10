@@ -5,6 +5,7 @@ export interface User {
   role: 'admin' | 'manager' | 'staff' | 'viewer'
   is_active: boolean
   created_at: string
+  updated_at?: string
 }
 
 export interface Category {
@@ -71,9 +72,9 @@ export interface Customer {
   email: string | null
   phone: string | null
   address: string | null
-  credit_limit: string
-  credit_used: string
-  credit_available: number
+  credit_limit: string     // USD
+  credit_used: string      // USD
+  credit_available: number // USD (computed)
   status: 'active' | 'inactive' | 'blacklisted'
   transactions_count?: number
   created_at: string
