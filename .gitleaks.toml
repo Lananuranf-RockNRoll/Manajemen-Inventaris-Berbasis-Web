@@ -1,0 +1,39 @@
+# =============================================================
+# InvenSys -- Gitleaks Configuration
+# Letakkan file ini di root project: .gitleaks.toml
+# Digunakan oleh GitHub Actions untuk scan secret leakage
+# =============================================================
+title = "InvenSys Gitleaks Config"
+
+[extend]
+useDefault = true
+
+[[rules]]
+id = "laravel-app-key"
+description = "Laravel APP_KEY dengan nilai nyata (bukan placeholder)"
+regex = '''APP_KEY=base64:[A-Za-z0-9+/]{40,}={0,2}'''
+tags = ["laravel", "credentials"]
+
+[[rules]]
+id = "mysql-password-inline"
+description = "MySQL password hardcoded langsung di kode"
+regex = '''DB_PASSWORD=[^\s$'\"]{8,}'''
+tags = ["mysql", "credentials"]
+
+[allowlist]
+description = "File yang boleh mengandung placeholder credentials"
+paths = [
+    ".env.example",
+    ".env.docker.example",
+    "docs/",
+    "*.md",
+    "scripts/health-check-route.php",
+]
+
+[[allowlist.regexes]]
+regex = '''APP_KEY=base64:GENERATE_ME'''
+description = "Placeholder APP_KEY di example files"
+
+[[allowlist.regexes]]
+regex = '''rootsecret123'''
+description = "Placeholder password di docker-compose example"

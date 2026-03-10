@@ -11,7 +11,42 @@ use App\Http\Controllers\Api\ReportController;
 use App\Http\Controllers\Api\TransactionController;
 use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\WarehouseController;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
+
+// ── Health Check (public, no auth) ───────────────────────────────────────────
+Route::get('/health', function () {
+    $checks = [];
+    $status = 'ok';
+
+    // Cek database
+    try {
+        DB::connection()->getPdo();
+        $checks['database'] = 'ok';
+    } catch (\Exception $e) {
+        $checks['database'] = 'error';
+        $status = 'degraded';
+    }
+
+    // Cek storage writable
+    try {
+        $f = storage_path('app/.healthcheck');
+        file_put_contents($f, 'ok');
+        unlink($f);
+        $checks['storage'] = 'ok';
+    } catch (\Exception $e) {
+        $checks['storage'] = 'error';
+        $status = 'degraded';
+    }
+
+    return response()->json([
+        'status'    => $status,
+        'app'       => config('app.name'),
+        'env'       => config('app.env'),
+        'timestamp' => now()->toISOString(),
+        'checks'    => $checks,
+    ], $status === 'ok' ? 200 : 503);
+});
 
 // ── Public Routes ─────────────────────────────────────────────────────────────
 Route::post('/auth/login',    [AuthController::class, 'login']);

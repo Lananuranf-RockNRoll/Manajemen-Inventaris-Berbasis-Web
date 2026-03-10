@@ -1,0 +1,349 @@
+# =============================================================
+# InvenSys — GitHub Actions CI/CD Pipeline (DevSecOps)
+# Disesuaikan dengan struktur project nyata:
+#   - Backend : Laravel 12 + PHP 8.2 (inventory-app/)
+#   - Frontend: Vue 3 + Vite + TypeScript (inventory-ui/)
+#   - Deploy  : Docker multi-stage ke AWS EC2 port 8888
+#
+# Flow: Security Scan -> Test -> Build -> Push GHCR -> Deploy
+# =============================================================
+name: CI/CD Pipeline InvenSys
+
+on:
+  push:
+    branches: [main, staging]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+# =============================================================
+jobs:
+
+  # -----------------------------------------------------------
+  # JOB 1: Security & Dependency Scan
+  # -----------------------------------------------------------
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # ── PHP: composer audit ──────────────────────────────────
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          tools: composer:v2
+
+      - uses: actions/cache@v4
+        with:
+          path: ~/.composer/cache
+          key: composer-sec-${{ hashFiles('inventory-app/composer.lock') }}
+
+      - name: Install PHP deps (no-dev)
+        working-directory: inventory-app
+        run: composer install --no-dev --prefer-dist --no-interaction --quiet
+
+      - name: PHP Security Audit
+        working-directory: inventory-app
+        run: composer audit --no-dev --format=plain
+        # composer audit tersedia sejak Composer 2.4
+        # Laravel 12 + Composer 2.7 (di Dockerfile) = aman
+
+      # ── Node: npm audit ──────────────────────────────────────
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: inventory-ui/package-lock.json
+
+      - name: Install Node deps
+        working-directory: inventory-ui
+        run: npm ci --prefer-offline
+
+      - name: Node Security Audit
+        working-directory: inventory-ui
+        run: npm audit --audit-level=high
+        continue-on-error: true
+        # continue-on-error karena Vue/Vite devDeps sering ada
+        # low-severity advisory yang tidak kritis di production
+
+      # ── Gitleaks: cek secret hardcoded ───────────────────────
+      - name: Scan hardcoded secrets (Gitleaks)
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # -----------------------------------------------------------
+  # JOB 2: PHP Tests
+  # -----------------------------------------------------------
+  test-php:
+    name: PHP Tests
+    runs-on: ubuntu-latest
+    needs: security-scan
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: roottest123
+          MYSQL_DATABASE: invensys_test
+          MYSQL_USER: invensys
+          MYSQL_PASSWORD: invensys_test123
+        ports: ['3306:3306']
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -proottest123"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          # Extensions sesuai Dockerfile (pdo_mysql,mbstring,exif,bcmath,gd,zip,intl)
+          extensions: pdo_mysql, mbstring, exif, bcmath, gd, zip, intl
+          tools: composer:v2
+          coverage: xdebug
+
+      - uses: actions/cache@v4
+        with:
+          path: ~/.composer/cache
+          key: composer-test-${{ hashFiles('inventory-app/composer.lock') }}
+
+      - name: Install PHP deps (with dev)
+        working-directory: inventory-app
+        run: composer install --prefer-dist --no-interaction --quiet
+
+      - name: Setup .env testing
+        working-directory: inventory-app
+        run: |
+          cp .env.example .env.testing
+          php artisan key:generate --env=testing
+          # Sesuaikan DB ke MySQL service GitHub Actions
+          sed -i 's|DB_HOST=.*|DB_HOST=127.0.0.1|'      .env.testing
+          sed -i 's|DB_PORT=.*|DB_PORT=3306|'             .env.testing
+          sed -i 's|DB_DATABASE=.*|DB_DATABASE=invensys_test|' .env.testing
+          sed -i 's|DB_USERNAME=.*|DB_USERNAME=invensys|' .env.testing
+          sed -i 's|DB_PASSWORD=.*|DB_PASSWORD=invensys_test123|' .env.testing
+          # Driver ringan untuk testing (tidak butuh Redis/DB session)
+          echo "CACHE_STORE=array"      >> .env.testing
+          echo "SESSION_DRIVER=array"   >> .env.testing
+          echo "QUEUE_CONNECTION=sync"  >> .env.testing
+
+      - name: Migrate database testing
+        working-directory: inventory-app
+        run: php artisan migrate --env=testing --force
+
+      - name: Run PHPUnit
+        working-directory: inventory-app
+        run: |
+          php artisan test --env=testing \
+            --coverage-clover=coverage.xml \
+            --log-junit=junit.xml
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: php-test-results
+          path: |
+            inventory-app/junit.xml
+            inventory-app/coverage.xml
+          retention-days: 7
+
+  # -----------------------------------------------------------
+  # JOB 3: Frontend Build
+  # -----------------------------------------------------------
+  test-frontend:
+    name: Frontend Build
+    runs-on: ubuntu-latest
+    needs: security-scan
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          # package.json mensyaratkan: "node": "^20.19.0 || >=22.12.0"
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: inventory-ui/package-lock.json
+
+      - name: Install Node deps
+        working-directory: inventory-ui
+        run: npm ci --prefer-offline
+
+      - name: TypeScript type-check
+        working-directory: inventory-ui
+        # Script "type-check" sudah ada di package.json: "vue-tsc --build"
+        run: npm run type-check
+
+      - name: Production build
+        working-directory: inventory-ui
+        # Script "build-only" sudah ada di package.json: "vite build"
+        run: npm run build-only
+        env:
+          VITE_API_BASE_URL: /api
+          NODE_ENV: production
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: frontend-dist
+          path: inventory-ui/dist/
+          retention-days: 1
+
+  # -----------------------------------------------------------
+  # JOB 4: Docker Build & Push ke GHCR
+  # Hanya berjalan saat push ke main
+  # -----------------------------------------------------------
+  docker-build:
+    name: Docker Build and Push
+    runs-on: ubuntu-latest
+    needs: [test-php, test-frontend]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+
+    permissions:
+      contents: read
+      packages: write
+      security-events: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Login ke GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build & Push invensys-backend
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: Dockerfile
+          target: backend
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/invensys-backend:${{ github.sha }}
+            ghcr.io/${{ github.repository_owner }}/invensys-backend:latest
+          cache-from: type=gha,scope=backend
+          cache-to: type=gha,scope=backend,mode=max
+
+      - name: Build & Push invensys-nginx
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: Dockerfile
+          target: nginx
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/invensys-nginx:${{ github.sha }}
+            ghcr.io/${{ github.repository_owner }}/invensys-nginx:latest
+          cache-from: type=gha,scope=nginx
+          cache-to: type=gha,scope=nginx,mode=max
+
+      - name: Trivy - Scan container vulnerability
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ghcr.io/${{ github.repository_owner }}/invensys-backend:${{ github.sha }}
+          format: sarif
+          output: trivy-results.sarif
+          severity: HIGH,CRITICAL
+          exit-code: '0'
+
+      - uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: trivy-results.sarif
+        continue-on-error: true
+
+  # -----------------------------------------------------------
+  # JOB 5: Deploy ke EC2
+  # Hanya berjalan setelah docker-build sukses di main
+  # -----------------------------------------------------------
+  deploy:
+    name: Deploy ke EC2
+    runs-on: ubuntu-latest
+    needs: docker-build
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+
+    environment:
+      name: production
+      url: http://${{ secrets.EC2_HOST }}:8888
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup SSH Agent
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.EC2_SSH_KEY }}
+
+      - name: Add EC2 ke known_hosts
+        run: |
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+
+      - name: Upload compose file & deploy script ke EC2
+        run: |
+          scp docker-compose.ec2.yml \
+            ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}:/tmp/docker-compose.ec2.yml
+          scp scripts/deploy-remote.sh \
+            ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}:/tmp/invensys-deploy.sh
+          ssh ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} \
+            "chmod +x /tmp/invensys-deploy.sh"
+
+      - name: Execute deploy di EC2
+        run: |
+          ssh ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} \
+            "COMMIT_SHA='${{ github.sha }}' \
+             GHCR_REGISTRY='ghcr.io/${{ github.repository_owner }}' \
+             GHCR_TOKEN='${{ secrets.GITHUB_TOKEN }}' \
+             GHCR_USER='${{ github.actor }}' \
+             bash /tmp/invensys-deploy.sh"
+
+      # Health check ke /api/health yang sudah kita tambahkan di routes/api.php
+      - name: Health Check
+        run: |
+          echo "Tunggu 30 detik untuk service ready..."
+          sleep 30
+
+          RETRY=0
+          MAX=12
+          URL="http://${{ secrets.EC2_HOST }}:8888/api/health"
+
+          until curl -fs --max-time 10 "$URL" > /dev/null 2>&1; do
+            RETRY=$((RETRY+1))
+            if [ $RETRY -ge $MAX ]; then
+              echo "Health check gagal setelah $MAX percobaan. Rollback..."
+              ssh ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} \
+                "bash /opt/invensys/rollback.sh" || true
+              exit 1
+            fi
+            echo "Percobaan $RETRY/$MAX, tunggu 10 detik..."
+            sleep 10
+          done
+          echo "Deploy sukses! Aplikasi berjalan normal."
+
+      - name: Log hasil deploy
+        if: always()
+        run: |
+          if [ "${{ job.status }}" = "success" ]; then
+            echo "SUKSES - Commit ${{ github.sha }} by ${{ github.actor }} at $(date)"
+          else
+            echo "GAGAL  - Commit ${{ github.sha }} by ${{ github.actor }} at $(date)"
+          fi
