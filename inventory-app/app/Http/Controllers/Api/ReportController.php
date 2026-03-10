@@ -5,12 +5,10 @@ namespace App\Http\Controllers\Api;
 use App\Exports\InventoryExport;
 use App\Exports\SalesExport;
 use App\Http\Controllers\Controller;
-use App\Models\Customer;
-use App\Models\Inventory;
-use App\Models\Product;
 use App\Models\Transaction;
 use App\Models\TransactionItem;
-use App\Models\Warehouse;
+use App\Models\Product;
+use App\Models\Customer;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -18,60 +16,52 @@ use Maatwebsite\Excel\Facades\Excel;
 
 class ReportController extends Controller
 {
-    // ─── Laporan Inventaris ───────────────────────────────────────────────
-
+    /**
+     * GET /api/reports/inventory/excel
+     */
     public function inventoryExcel(Request $request)
     {
         $filename = 'laporan-inventaris-' . now()->format('Ymd-His') . '.xlsx';
+
         return Excel::download(new InventoryExport($request->warehouse_id), $filename);
     }
 
-    // ─── Invoice per Transaksi ────────────────────────────────────────────
-
-    public function invoicePdf(Transaction $transaction)
-    {
-        $transaction->load(['customer', 'warehouse', 'items.product']);
-
-        $pdf = Pdf::loadView('reports.invoice-pdf', compact('transaction'))
-            ->setPaper('a4');
-
-        $filename = 'invoice-' . str_replace(['/', ' '], '-', $transaction->order_number)
-            . '-' . now()->format('Ymd') . '.pdf';
-
-        return $pdf->download($filename);
-    }
-
-    // ─── Laporan Penjualan ────────────────────────────────────────────────
-
+    /**
+     * GET /api/reports/sales/excel
+     */
     public function salesExcel(Request $request)
     {
         $filename = 'laporan-penjualan-' . now()->format('Ymd-His') . '.xlsx';
+
         return Excel::download(
             new SalesExport($request->from, $request->to, $request->status),
             $filename
         );
     }
 
+    /**
+     * GET /api/reports/sales/pdf
+     */
     public function salesPdf(Request $request)
     {
         $transactions = Transaction::with(['customer', 'warehouse'])
-            ->when($request->from, fn($q) => $q->whereDate('order_date', '>=', $request->from))
-            ->when($request->to,   fn($q) => $q->whereDate('order_date', '<=', $request->to))
-            ->when($request->status, fn($q) => $q->where('status', $request->status))
-            ->orderBy('order_date', 'desc')
+            ->when($request->from,   fn ($q) => $q->whereDate('order_date', '>=', $request->from))
+            ->when($request->to,     fn ($q) => $q->whereDate('order_date', '<=', $request->to))
+            ->when($request->status, fn ($q) => $q->where('status', $request->status))
+            ->orderByDesc('order_date')
             ->get();
 
         $from = $request->from;
         $to   = $request->to;
 
-        $pdf = Pdf::loadView('reports.sales-pdf', compact('transactions', 'from', 'to'))
-            ->setPaper('a4');
-
-        return $pdf->download('laporan-penjualan-' . now()->format('Ymd-His') . '.pdf');
+        return Pdf::loadView('reports.sales-pdf', compact('transactions', 'from', 'to'))
+            ->setPaper('a4')
+            ->download('laporan-penjualan-' . now()->format('Ymd-His') . '.pdf');
     }
 
-    // ─── Dashboard PDF ────────────────────────────────────────────────────
-
+    /**
+     * GET /api/reports/dashboard/pdf
+     */
     public function dashboardPdf()
     {
         $summary = [
@@ -94,7 +84,7 @@ class ReportController extends Controller
             ->orderByDesc('total_revenue')
             ->limit(5)
             ->get()
-            ->map(fn($item) => [
+            ->map(fn ($item) => [
                 'name'          => $item->product->name           ?? '-',
                 'sku'           => $item->product->sku            ?? '-',
                 'category_name' => $item->product->category->name ?? '-',
@@ -114,10 +104,23 @@ class ReportController extends Controller
             ->get()
             ->toArray();
 
-        $pdf = Pdf::loadView('reports.dashboard-pdf', compact(
-            'summary', 'topProducts', 'monthlySales'
-        ))->setPaper('a4');
+        return Pdf::loadView('reports.dashboard-pdf', compact('summary', 'topProducts', 'monthlySales'))
+            ->setPaper('a4')
+            ->download('dashboard-' . now()->format('Ymd-His') . '.pdf');
+    }
 
-        return $pdf->download('dashboard-' . now()->format('Ymd-His') . '.pdf');
+    /**
+     * GET /api/reports/transactions/{transaction}/invoice
+     */
+    public function invoicePdf(Transaction $transaction)
+    {
+        $transaction->load(['customer', 'warehouse', 'items.product']);
+
+        $filename = 'invoice-' . str_replace(['/', ' '], '-', $transaction->order_number)
+            . '-' . now()->format('Ymd') . '.pdf';
+
+        return Pdf::loadView('reports.invoice-pdf', compact('transaction'))
+            ->setPaper('a4')
+            ->download($filename);
     }
 }

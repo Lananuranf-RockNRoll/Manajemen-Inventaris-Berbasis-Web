@@ -12,17 +12,20 @@ class UserController extends Controller
 {
     /**
      * GET /api/users
-     * Admin only: list all users
      */
     public function index(Request $request): JsonResponse
     {
         $users = User::query()
-            ->when($request->search, fn($q) => $q->where('name', 'LIKE', "%{$request->search}%")
+            ->when($request->search, fn ($q) => $q
+                ->where('name', 'LIKE', "%{$request->search}%")
                 ->orWhere('email', 'LIKE', "%{$request->search}%"))
-            ->when($request->role, fn($q) => $q->where('role', $request->role))
-            ->when($request->has('is_active'), fn($q) => $q->where('is_active', filter_var($request->is_active, FILTER_VALIDATE_BOOLEAN)))
+            ->when($request->role, fn ($q) => $q->where('role', $request->role))
+            ->when($request->has('is_active'), fn ($q) => $q->where(
+                'is_active',
+                filter_var($request->is_active, FILTER_VALIDATE_BOOLEAN)
+            ))
             ->orderBy('name')
-            ->paginate($request->per_page ?? 15);
+            ->paginate($request->integer('per_page', 15));
 
         return response()->json([
             'data' => $users->items(),
@@ -39,49 +42,46 @@ class UserController extends Controller
 
     /**
      * POST /api/users
-     * Admin only: create manager, staff, or viewer
      */
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'name'     => 'required|string|max:100',
-            'email'    => 'required|email|max:100|unique:users,email',
-            'password' => 'required|string|min:8',
-            'role'     => 'required|in:manager,staff,viewer',
-            'is_active'=> 'sometimes|boolean',
+            'name'      => 'required|string|max:100',
+            'email'     => 'required|email|max:100|unique:users,email',
+            'password'  => 'required|string|min:8',
+            'role'      => 'required|in:manager,staff,viewer',
+            'is_active' => 'sometimes|boolean',
         ]);
 
         $user = User::create([
-            'name'      => $validated['name'],
-            'email'     => $validated['email'],
+            ...$validated,
             'password'  => Hash::make($validated['password']),
-            'role'      => $validated['role'],
             'is_active' => $validated['is_active'] ?? true,
         ]);
 
         return response()->json([
             'message' => 'User berhasil dibuat.',
-            'data'    => $this->userArray($user),
+            'data'    => $this->formatUser($user),
         ], 201);
     }
 
     /**
-     * GET /api/users/{id}
+     * GET /api/users/{user}
      */
     public function show(User $user): JsonResponse
     {
-        return response()->json(['data' => $this->userArray($user)]);
+        return response()->json(['data' => $this->formatUser($user)]);
     }
 
     /**
-     * PUT /api/users/{id}
-     * Admin only: update user (cannot change own role or deactivate self)
+     * PUT /api/users/{user}
      */
     public function update(Request $request, User $user): JsonResponse
     {
-        // Admin tidak bisa mengubah dirinya sendiri via endpoint ini (gunakan /auth/me)
         if ($request->user()->id === $user->id) {
-            return response()->json(['message' => 'Gunakan endpoint profile untuk mengubah akun sendiri.'], 422);
+            return response()->json([
+                'message' => 'Gunakan endpoint profile untuk mengubah akun sendiri.',
+            ], 422);
         }
 
         $validated = $request->validate([
@@ -100,13 +100,12 @@ class UserController extends Controller
 
         return response()->json([
             'message' => 'User berhasil diperbarui.',
-            'data'    => $this->userArray($user->fresh()),
+            'data'    => $this->formatUser($user->fresh()),
         ]);
     }
 
     /**
-     * DELETE /api/users/{id}
-     * Admin only: soft delete user
+     * DELETE /api/users/{user}
      */
     public function destroy(Request $request, User $user): JsonResponse
     {
@@ -120,24 +119,27 @@ class UserController extends Controller
     }
 
     /**
-     * PATCH /api/users/{id}/toggle-active
-     * Admin only: toggle active status
+     * PATCH /api/users/{user}/toggle-active
      */
     public function toggleActive(Request $request, User $user): JsonResponse
     {
         if ($request->user()->id === $user->id) {
-            return response()->json(['message' => 'Tidak dapat menonaktifkan akun sendiri.'], 422);
+            return response()->json([
+                'message' => 'Tidak dapat menonaktifkan akun sendiri.',
+            ], 422);
         }
 
-        $user->update(['is_active' => !$user->is_active]);
+        $user->update(['is_active' => ! $user->is_active]);
+        $user->refresh();
 
         return response()->json([
             'message' => $user->is_active ? 'User diaktifkan.' : 'User dinonaktifkan.',
-            'data'    => $this->userArray($user->fresh()),
+            'data'    => $this->formatUser($user),
         ]);
     }
 
-    private function userArray(User $user): array
+    /** Format user array untuk response — satu tempat, konsisten di semua method */
+    private function formatUser(User $user): array
     {
         return [
             'id'         => $user->id,

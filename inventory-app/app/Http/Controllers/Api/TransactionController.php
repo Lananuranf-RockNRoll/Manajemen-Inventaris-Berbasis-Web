@@ -19,7 +19,7 @@ class TransactionController extends Controller
 
     /**
      * GET /api/transactions
-     * Params: ?status=pending&from=2024-01-01&to=2024-12-31&customer_id=1&per_page=20
+     * Params: ?status=&from=&to=&customer_id=&per_page=20
      */
     public function index(Request $request): JsonResponse
     {
@@ -73,12 +73,12 @@ class TransactionController extends Controller
 
         $transaction->update($validated);
 
-        return (new TransactionResource($transaction))->response();
+        return (new TransactionResource($transaction->fresh()))->response();
     }
 
     /**
      * DELETE /api/transactions/{transaction}
-     * Only allowed when status is pending.
+     * Hanya boleh saat status pending.
      */
     public function destroy(Transaction $transaction): JsonResponse
     {

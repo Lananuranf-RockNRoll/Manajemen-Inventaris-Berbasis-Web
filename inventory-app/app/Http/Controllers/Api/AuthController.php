@@ -12,36 +12,6 @@ use Illuminate\Validation\ValidationException;
 class AuthController extends Controller
 {
     /**
-     * POST /api/auth/register
-     */
-    public function register(Request $request): JsonResponse
-    {
-        $validated = $request->validate([
-            'name'     => 'required|string|max:100',
-            'email'    => 'required|email|max:100|unique:users,email',
-            'password' => 'required|string|min:8|confirmed',
-            'role'     => 'sometimes|in:admin,manager,staff,viewer',
-        ]);
-
-        $user = User::create([
-            'name'     => $validated['name'],
-            'email'    => $validated['email'],
-            'password' => Hash::make($validated['password']),
-            'role'     => $validated['role'] ?? 'staff',
-        ]);
-
-        $token = $user->createToken('auth_token')->plainTextToken;
-
-        return response()->json([
-            'message' => 'Registrasi berhasil.',
-            'data'    => [
-                'user'  => $this->userResponse($user),
-                'token' => $token,
-            ],
-        ], 201);
-    }
-
-    /**
      * POST /api/auth/login
      */
     public function login(Request $request): JsonResponse
@@ -68,7 +38,7 @@ class AuthController extends Controller
         return response()->json([
             'message' => 'Login berhasil.',
             'data'    => [
-                'user'  => $this->userResponse($user),
+                'user'  => $this->formatUser($user),
                 'token' => $token,
             ],
         ]);
@@ -90,12 +60,12 @@ class AuthController extends Controller
     public function me(Request $request): JsonResponse
     {
         return response()->json([
-            'data' => $this->userResponse($request->user()),
+            'data' => $this->formatUser($request->user()),
         ]);
     }
 
-    // ── Private ──────────────────────────────────────────────────────────────────
-    private function userResponse(User $user): array
+    /** Format user untuk response */
+    private function formatUser(User $user): array
     {
         return [
             'id'         => $user->id,

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -30,19 +31,23 @@ class Customer extends Model
     }
 
     // ── Computed Attributes ─────────────────────────────────────────────────────
+
+    /** Sisa credit yang tersedia = limit - used */
     public function getCreditAvailableAttribute(): float
     {
         return round((float) $this->credit_limit - (float) $this->credit_used, 2);
     }
 
     // ── Relationships ───────────────────────────────────────────────────────────
+
     public function transactions(): HasMany
     {
         return $this->hasMany(Transaction::class);
     }
 
     // ── Scopes ──────────────────────────────────────────────────────────────────
-    public function scopeActive($query)
+
+    public function scopeActive(Builder $query): Builder
     {
         return $query->where('status', 'active');
     }

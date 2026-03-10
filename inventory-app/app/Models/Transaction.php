@@ -2,10 +2,11 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Transaction extends Model
 {
@@ -33,33 +34,30 @@ class Transaction extends Model
     }
 
     // ── Boot ────────────────────────────────────────────────────────────────────
+
     protected static function boot(): void
     {
         parent::boot();
 
-        static::creating(function (Transaction $transaction) {
-            if (empty($transaction->order_number)) {
-                $transaction->order_number = 'ORD-' . strtoupper(uniqid());
-            }
-
-            if (empty($transaction->order_date)) {
-                $transaction->order_date = now()->toDateString();
-            }
+        static::creating(function (Transaction $transaction): void {
+            $transaction->order_number ??= 'ORD-' . strtoupper(uniqid());
+            $transaction->order_date   ??= now()->toDateString();
         });
     }
 
     // ── Relationships ───────────────────────────────────────────────────────────
-    public function customer(): BelongsTo
+
+    public function customer(): \Illuminate\Database\Eloquent\Relations\BelongsTo
     {
         return $this->belongsTo(Customer::class);
     }
 
-    public function employee(): BelongsTo
+    public function employee(): \Illuminate\Database\Eloquent\Relations\BelongsTo
     {
         return $this->belongsTo(Employee::class);
     }
 
-    public function warehouse(): BelongsTo
+    public function warehouse(): \Illuminate\Database\Eloquent\Relations\BelongsTo
     {
         return $this->belongsTo(Warehouse::class);
     }
@@ -70,17 +68,18 @@ class Transaction extends Model
     }
 
     // ── Scopes ──────────────────────────────────────────────────────────────────
-    public function scopeByStatus($query, string $status)
+
+    public function scopeByStatus(Builder $query, string $status): Builder
     {
         return $query->where('status', $status);
     }
 
-    public function scopeDateRange($query, string $from, string $to)
+    public function scopeDateRange(Builder $query, string $from, string $to): Builder
     {
         return $query->whereBetween('order_date', [$from, $to]);
     }
 
-    public function scopeByCustomer($query, int $customerId)
+    public function scopeByCustomer(Builder $query, int $customerId): Builder
     {
         return $query->where('customer_id', $customerId);
     }

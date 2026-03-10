@@ -14,7 +14,7 @@ class ProductController extends Controller
 {
     /**
      * GET /api/products
-     * Params: ?search=xeon&category_id=1&per_page=15&active=1
+     * Params: ?search=&category_id=&per_page=15&active=1
      */
     public function index(Request $request): JsonResponse
     {
@@ -23,7 +23,7 @@ class ProductController extends Controller
             ->when($request->category_id, fn ($q) => $q->byCategory((int) $request->category_id))
             ->when($request->active,      fn ($q) => $q->active())
             ->orderBy('name')
-            ->paginate($request->per_page ?? 15);
+            ->paginate($request->integer('per_page', 15));
 
         return ProductResource::collection($products)->response();
     }
@@ -35,11 +35,13 @@ class ProductController extends Controller
     {
         $product = Product::create($request->validated());
 
-        return (new ProductResource($product->load('category')))->response()->setStatusCode(201);
+        return (new ProductResource($product->load('category')))
+            ->response()
+            ->setStatusCode(201);
     }
 
     /**
-     * GET /api/products/{id}
+     * GET /api/products/{product}
      */
     public function show(Product $product): JsonResponse
     {
@@ -49,7 +51,7 @@ class ProductController extends Controller
     }
 
     /**
-     * PUT /api/products/{id}
+     * PUT /api/products/{product}
      */
     public function update(UpdateProductRequest $request, Product $product): JsonResponse
     {
@@ -59,7 +61,7 @@ class ProductController extends Controller
     }
 
     /**
-     * DELETE /api/products/{id}  — soft delete
+     * DELETE /api/products/{product}
      */
     public function destroy(Product $product): JsonResponse
     {

@@ -19,58 +19,36 @@ class DashboardController extends Controller
      */
     public function summary(): JsonResponse
     {
-        $totalRevenue = Transaction::where('status', '!=', 'canceled')
-            ->sum('total_amount');
-
         $orderCounts = Transaction::select('status', DB::raw('count(*) as total'))
             ->groupBy('status')
             ->pluck('total', 'status');
 
-        $revenueThisMonth = Transaction::where('status', '!=', 'canceled')
-            ->whereYear('order_date', now()->year)
-            ->whereMonth('order_date', now()->month)
-            ->sum('total_amount');
-
-        $lowStockCount = Inventory::lowStock()->count();
-
-        $topCategory = DB::table('transaction_items')
-            ->join('products', 'transaction_items.product_id', '=', 'products.id')
-            ->join('categories', 'products.category_id', '=', 'categories.id')
-            ->join('transactions', 'transaction_items.transaction_id', '=', 'transactions.id')
-            ->where('transactions.status', '!=', 'canceled')
-            ->select('categories.name', DB::raw('SUM(transaction_items.quantity * transaction_items.unit_price) as revenue'))
-            ->groupBy('categories.id', 'categories.name')
-            ->orderByDesc('revenue')
-            ->first();
-
         return response()->json([
             'data' => [
-                'total_revenue'        => round((float) $totalRevenue, 2),
-                'total_orders'         => Transaction::count(),
-                'shipped_orders'       => $orderCounts['shipped'] ?? 0,
-                'pending_orders'       => $orderCounts['pending'] ?? 0,
-                'canceled_orders'      => $orderCounts['canceled'] ?? 0,
-                'total_products'       => Product::count(),
-                'total_warehouses'     => Warehouse::count(),
-                'total_customers'      => Customer::count(),
-                'low_stock_alerts'     => $lowStockCount,
-                'top_category'         => $topCategory?->name ?? '-',
-                'revenue_this_month'   => round((float) $revenueThisMonth, 2),
+                'total_revenue'      => $this->revenueQuery()->sum('total_amount'),
+                'total_orders'       => Transaction::count(),
+                'shipped_orders'     => $orderCounts['shipped']   ?? 0,
+                'pending_orders'     => $orderCounts['pending']   ?? 0,
+                'canceled_orders'    => $orderCounts['canceled']  ?? 0,
+                'total_products'     => Product::count(),
+                'total_warehouses'   => Warehouse::count(),
+                'total_customers'    => Customer::count(),
+                'low_stock_alerts'   => Inventory::lowStock()->count(),
+                'top_category'       => $this->topCategoryName(),
+                'revenue_this_month' => round((float) $this->revenueQuery()
+                    ->whereYear('order_date', now()->year)
+                    ->whereMonth('order_date', now()->month)
+                    ->sum('total_amount'), 2),
             ],
         ]);
     }
 
     /**
      * GET /api/dashboard/top-products
-     * Returns top 10 products by revenue
      */
     public function topProducts(): JsonResponse
     {
-        $topProducts = DB::table('transaction_items')
-            ->join('products', 'transaction_items.product_id', '=', 'products.id')
-            ->join('categories', 'products.category_id', '=', 'categories.id')
-            ->join('transactions', 'transaction_items.transaction_id', '=', 'transactions.id')
-            ->where('transactions.status', '!=', 'canceled')
+        $topProducts = $this->transactionItemsQuery()
             ->select(
                 'products.id',
                 'products.name',
@@ -89,11 +67,10 @@ class DashboardController extends Controller
 
     /**
      * GET /api/dashboard/low-stock
-     * Returns products with low stock across all warehouses
      */
     public function lowStock(): JsonResponse
     {
-        $lowStock = Inventory::with(['product.category', 'warehouse'])
+        $items = Inventory::with(['product.category', 'warehouse'])
             ->lowStock()
             ->orderBy('qty_on_hand')
             ->limit(20)
@@ -110,6 +87,36 @@ class DashboardController extends Controller
                 'min_stock'      => $inv->min_stock,
             ]);
 
-        return response()->json(['data' => $lowStock]);
+        return response()->json(['data' => $items]);
+    }
+
+    // ── Private helpers ───────────────────────────────────────────────────────
+
+    /** Query dasar transaksi non-canceled */
+    private function revenueQuery()
+    {
+        return Transaction::where('status', '!=', 'canceled');
+    }
+
+    /** Query join transaction_items → products → categories → transactions (non-canceled) */
+    private function transactionItemsQuery()
+    {
+        return DB::table('transaction_items')
+            ->join('products',      'transaction_items.product_id',    '=', 'products.id')
+            ->join('categories',    'products.category_id',            '=', 'categories.id')
+            ->join('transactions',  'transaction_items.transaction_id', '=', 'transactions.id')
+            ->where('transactions.status', '!=', 'canceled');
+    }
+
+    /** Nama kategori dengan revenue tertinggi */
+    private function topCategoryName(): string
+    {
+        $result = $this->transactionItemsQuery()
+            ->select('categories.name', DB::raw('SUM(transaction_items.quantity * transaction_items.unit_price) as revenue'))
+            ->groupBy('categories.id', 'categories.name')
+            ->orderByDesc('revenue')
+            ->first();
+
+        return $result?->name ?? '-';
     }
 }

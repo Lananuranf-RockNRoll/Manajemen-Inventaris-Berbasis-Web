@@ -10,7 +10,7 @@ use Illuminate\Http\Request;
 
 class CustomerController extends Controller
 {
-    private const DEFAULT_CREDIT_LIMIT = 300.00; // $300 USD
+    private const DEFAULT_CREDIT_LIMIT = 300.00;
 
     /**
      * GET /api/customers
@@ -18,11 +18,12 @@ class CustomerController extends Controller
     public function index(Request $request): JsonResponse
     {
         $customers = Customer::query()
-            ->when($request->search, fn($q) => $q->where('name', 'LIKE', "%{$request->search}%")
+            ->when($request->search, fn ($q) => $q
+                ->where('name', 'LIKE', "%{$request->search}%")
                 ->orWhere('email', 'LIKE', "%{$request->search}%"))
-            ->when($request->status, fn($q) => $q->where('status', $request->status))
+            ->when($request->status, fn ($q) => $q->where('status', $request->status))
             ->orderBy('name')
-            ->paginate($request->per_page ?? 15);
+            ->paginate($request->integer('per_page', 15));
 
         return CustomerResource::collection($customers)->response();
     }
@@ -41,10 +42,7 @@ class CustomerController extends Controller
             'status'       => 'sometimes|in:active,inactive,blacklisted',
         ]);
 
-        // Default credit limit $300 USD jika tidak di-set
-        if (!isset($validated['credit_limit'])) {
-            $validated['credit_limit'] = self::DEFAULT_CREDIT_LIMIT;
-        }
+        $validated['credit_limit'] ??= self::DEFAULT_CREDIT_LIMIT;
 
         $customer = Customer::create($validated);
 
@@ -52,7 +50,7 @@ class CustomerController extends Controller
     }
 
     /**
-     * GET /api/customers/{id}
+     * GET /api/customers/{customer}
      */
     public function show(Customer $customer): JsonResponse
     {
@@ -60,7 +58,7 @@ class CustomerController extends Controller
     }
 
     /**
-     * PUT /api/customers/{id}
+     * PUT /api/customers/{customer}
      */
     public function update(Request $request, Customer $customer): JsonResponse
     {
@@ -79,7 +77,7 @@ class CustomerController extends Controller
     }
 
     /**
-     * DELETE /api/customers/{id}
+     * DELETE /api/customers/{customer}
      */
     public function destroy(Customer $customer): JsonResponse
     {
@@ -95,8 +93,7 @@ class CustomerController extends Controller
     }
 
     /**
-     * PATCH /api/customers/{id}/credit
-     * Tambah atau kurangi credit limit customer (manager+)
+     * PATCH /api/customers/{customer}/credit
      * Body: { "action": "add"|"subtract"|"set", "amount": 100.00 }
      */
     public function adjustCredit(Request $request, Customer $customer): JsonResponse
@@ -106,10 +103,11 @@ class CustomerController extends Controller
             'amount' => 'required|numeric|min:0',
         ]);
 
-        $action = $validated['action'];
-        $amount = (float) $validated['amount'];
+        $amount  = (float) $validated['amount'];
+        $used    = (float) $customer->credit_used;
+        $message = '';
 
-        switch ($action) {
+        switch ($validated['action']) {
             case 'add':
                 $customer->increment('credit_limit', $amount);
                 $message = "Credit limit ditambah \${$amount}.";
@@ -117,21 +115,16 @@ class CustomerController extends Controller
 
             case 'subtract':
                 $newLimit = max(0, (float) $customer->credit_limit - $amount);
-                // Pastikan credit_limit tidak lebih kecil dari credit_used
-                if ($newLimit < (float) $customer->credit_used) {
-                    return response()->json([
-                        'message' => "Tidak dapat mengurangi credit limit di bawah penggunaan saat ini (\${$customer->credit_used}).",
-                    ], 422);
+                if ($newLimit < $used) {
+                    return $this->creditConflictResponse($used);
                 }
                 $customer->update(['credit_limit' => $newLimit]);
                 $message = "Credit limit dikurangi \${$amount}.";
                 break;
 
             case 'set':
-                if ($amount < (float) $customer->credit_used) {
-                    return response()->json([
-                        'message' => "Credit limit tidak bisa lebih kecil dari penggunaan saat ini (\${$customer->credit_used}).",
-                    ], 422);
+                if ($amount < $used) {
+                    return $this->creditConflictResponse($used);
                 }
                 $customer->update(['credit_limit' => $amount]);
                 $message = "Credit limit diset ke \${$amount}.";
@@ -144,8 +137,7 @@ class CustomerController extends Controller
     }
 
     /**
-     * POST /api/customers/{id}/reset-credit
-     * Reset credit_used ke 0 (admin only — untuk koreksi manual)
+     * POST /api/customers/{customer}/reset-credit
      */
     public function resetCreditUsed(Customer $customer): JsonResponse
     {
@@ -154,5 +146,13 @@ class CustomerController extends Controller
         return (new CustomerResource($customer->fresh()))
             ->additional(['message' => 'Credit used direset ke $0.'])
             ->response();
+    }
+
+    /** Response helper untuk konflik credit limit vs credit used */
+    private function creditConflictResponse(float $creditUsed): JsonResponse
+    {
+        return response()->json([
+            'message' => "Credit limit tidak bisa lebih kecil dari penggunaan saat ini (\${$creditUsed}).",
+        ], 422);
     }
 }
