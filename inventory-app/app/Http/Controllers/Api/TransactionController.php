@@ -10,6 +10,7 @@ use App\Services\TransactionService;
 use Exception;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class TransactionController extends Controller
 {
@@ -64,6 +65,7 @@ class TransactionController extends Controller
 
     /**
      * PUT /api/transactions/{transaction}
+     * Hanya update field notes.
      */
     public function update(Request $request, Transaction $transaction): JsonResponse
     {
@@ -79,6 +81,7 @@ class TransactionController extends Controller
     /**
      * DELETE /api/transactions/{transaction}
      * Hanya boleh saat status pending.
+     * Dibungkus DB::transaction agar atomik — jika salah satu gagal semua di-rollback.
      */
     public function destroy(Transaction $transaction): JsonResponse
     {
@@ -88,8 +91,10 @@ class TransactionController extends Controller
             ], 422);
         }
 
-        $transaction->items()->delete();
-        $transaction->delete();
+        DB::transaction(function () use ($transaction): void {
+            $transaction->items()->delete();
+            $transaction->delete();
+        });
 
         return response()->json(['message' => 'Transaksi berhasil dihapus.']);
     }
