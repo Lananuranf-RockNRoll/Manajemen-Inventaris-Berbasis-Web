@@ -12,7 +12,6 @@ use App\Models\TransactionItem;
 use App\Models\Warehouse;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
-use League\Csv\Reader;
 
 class ImportInventoryCSV extends Command
 {
@@ -30,7 +29,7 @@ class ImportInventoryCSV extends Command
 
         $this->info("Membaca file: {$filePath}");
 
-        $rows = array_map('str_getcsv', file($filePath));
+        $rows    = array_map('str_getcsv', file($filePath));
         $headers = array_shift($rows);
         $headers = array_map('trim', $headers);
 
@@ -39,7 +38,7 @@ class ImportInventoryCSV extends Command
         $bar = $this->output->createProgressBar(count($rows));
         $bar->start();
 
-        DB::transaction(function () use ($rows, $headers, $bar) {
+        DB::transaction(function () use ($rows, $headers, $bar): void {
             foreach ($rows as $row) {
                 $data = array_combine($headers, array_map('trim', $row));
 
@@ -74,12 +73,13 @@ class ImportInventoryCSV extends Command
                     ]
                 );
 
-                // Product
+                // FIX: generate SKU pakai uniqid() langsung — tidak bergantung pada $product->id
+                // yang belum ada saat firstOrCreate dipanggil pertama kali
                 $product = Product::firstOrCreate(
                     ['name' => $data['ProductName']],
                     [
                         'category_id'   => $category->id,
-                        'sku'           => strtoupper(substr($data['CategoryName'], 0, 3)) . '-' . $product->id ?? uniqid(),
+                        'sku'           => strtoupper(substr($data['CategoryName'], 0, 3)) . '-' . uniqid(),
                         'description'   => $data['ProductDescription'],
                         'standard_cost' => (float) $data['ProductStandardCost'],
                         'list_price'    => (float) $data['ProductListPrice'],
@@ -98,22 +98,31 @@ class ImportInventoryCSV extends Command
                 );
 
                 // Transaction
-                $status = strtolower($data['Status']);
+                $status      = strtolower($data['Status']);
+                $quantity    = (int) $data['OrderItemQuantity'];
+                $unitPrice   = (float) $data['PerUnitPrice'];
+                $totalAmount = $unitPrice * $quantity;
+
                 $transaction = Transaction::create([
                     'customer_id'  => $customer->id,
                     'employee_id'  => $employee->id,
                     'warehouse_id' => $warehouse->id,
-                    'status'       => $status === 'shipped' ? 'shipped' :
-                                     ($status === 'canceled' ? 'canceled' : 'pending'),
+                    'status'       => match ($status) {
+                        'shipped'  => 'shipped',
+                        'canceled' => 'canceled',
+                        default    => 'pending',
+                    },
                     'order_date'   => $this->parseDate($data['OrderDate']),
-                    'total_amount' => (float) $data['PerUnitPrice'] * (int) $data['OrderItemQuantity'],
+                    'total_amount' => $totalAmount,
                 ]);
 
+                // FIX: tambahkan field subtotal yang wajib ada di TransactionItem
                 TransactionItem::create([
                     'transaction_id' => $transaction->id,
                     'product_id'     => $product->id,
-                    'quantity'       => (int) $data['OrderItemQuantity'],
-                    'unit_price'     => (float) $data['PerUnitPrice'],
+                    'quantity'       => $quantity,
+                    'unit_price'     => $unitPrice,
+                    'subtotal'       => $totalAmount,
                 ]);
 
                 // Inventory

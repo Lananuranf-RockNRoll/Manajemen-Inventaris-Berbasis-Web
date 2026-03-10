@@ -33,8 +33,10 @@ class SendLowStockAlerts extends Command
             return self::SUCCESS;
         }
 
+        // FIX: gunakan isRealtime: false agar subject email menampilkan label [Harian]
+        // bukan [Real-time], karena ini adalah command manual / scheduled digest
         foreach ($recipients as $user) {
-            Mail::to($user->email)->queue(new LowStockAlert($lowStockItems));
+            Mail::to($user->email)->queue(new LowStockAlert($lowStockItems, isRealtime: false));
         }
 
         $this->info("Alert terkirim ke {$recipients->count()} penerima untuk {$lowStockItems->count()} produk.");

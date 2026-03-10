@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -31,7 +32,7 @@ class Category extends Model
     {
         parent::boot();
 
-        static::creating(function (Category $category) {
+        static::creating(function (Category $category): void {
             if (empty($category->slug)) {
                 $category->slug = Str::slug($category->name);
             }
@@ -45,7 +46,7 @@ class Category extends Model
     }
 
     // ── Scopes ──────────────────────────────────────────────────────────────────
-    public function scopeActive($query)
+    public function scopeActive(Builder $query): Builder
     {
         return $query->where('is_active', true);
     }
