@@ -15,19 +15,15 @@ class TransactionItem extends Model
         'product_id',
         'quantity',
         'unit_price',
+        'subtotal',
     ];
 
     protected function casts(): array
     {
         return [
             'unit_price' => 'decimal:2',
+            'subtotal'   => 'decimal:2',
         ];
-    }
-
-    // ── Computed Attributes ─────────────────────────────────────────────────────
-    public function getSubtotalAttribute(): float
-    {
-        return round($this->quantity * (float) $this->unit_price, 2);
     }
 
     // ── Relationships ───────────────────────────────────────────────────────────

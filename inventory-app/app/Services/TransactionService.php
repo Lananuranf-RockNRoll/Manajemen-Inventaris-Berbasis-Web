@@ -19,8 +19,8 @@ class TransactionService
 
     private const ALLOWED_TRANSITIONS = [
         self::STATUS_PENDING    => [self::STATUS_PROCESSING, self::STATUS_CANCELED],
-        self::STATUS_PROCESSING => [self::STATUS_SHIPPED, self::STATUS_CANCELED],
-        self::STATUS_SHIPPED    => [self::STATUS_DELIVERED, self::STATUS_CANCELED],
+        self::STATUS_PROCESSING => [self::STATUS_SHIPPED,    self::STATUS_CANCELED],
+        self::STATUS_SHIPPED    => [self::STATUS_DELIVERED,  self::STATUS_CANCELED],
         self::STATUS_DELIVERED  => [],
         self::STATUS_CANCELED   => [],
     ];
@@ -36,25 +36,24 @@ class TransactionService
 
             $totalAmount = $this->calculateTotalAmount($items);
 
-            // ── Credit validation ─────────────────────────────────────────────
             if (isset($data['customer_id'])) {
                 $this->validateCustomerCredit($data['customer_id'], $totalAmount);
             }
 
             $transaction = Transaction::create([
                 ...$data,
+                'status'       => self::STATUS_PENDING,
                 'total_amount' => $totalAmount,
             ]);
 
             $this->createTransactionItems($transaction, $items);
 
-            // Tambah credit_used pada customer
             if ($transaction->customer_id) {
                 Customer::where('id', $transaction->customer_id)
                     ->increment('credit_used', $totalAmount);
             }
 
-            return $transaction;
+            return $transaction->fresh();
         });
     }
 
@@ -80,7 +79,6 @@ class TransactionService
             }
 
             if ($newStatus === self::STATUS_CANCELED) {
-                // Kembalikan credit_used ke customer
                 Customer::where('id', $transaction->customer_id)
                     ->decrement('credit_used', (float) $transaction->total_amount);
 
@@ -95,10 +93,7 @@ class TransactionService
 
     // ── Private ───────────────────────────────────────────────────────────────
 
-    /**
-     * Validate customer credit availability (in USD)
-     * @throws Exception
-     */
+    /** @throws Exception */
     private function validateCustomerCredit(int $customerId, float $totalAmount): void
     {
         $customer = Customer::findOrFail($customerId);
@@ -126,7 +121,7 @@ class TransactionService
     private function calculateTotalAmount(array $items): float
     {
         return (float) collect($items)->sum(
-            fn(array $item): float => $item['quantity'] * $item['unit_price']
+            fn (array $item): float => $item['quantity'] * $item['unit_price']
         );
     }
 
@@ -142,9 +137,7 @@ class TransactionService
         }
     }
 
-    /**
-     * @throws Exception
-     */
+    /** @throws Exception */
     private function ensureValidStatusTransition(string $currentStatus, string $newStatus): void
     {
         $allowedStatuses = self::ALLOWED_TRANSITIONS[$currentStatus] ?? [];

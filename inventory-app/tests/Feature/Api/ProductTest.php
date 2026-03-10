@@ -21,8 +21,8 @@ class ProductTest extends TestCase
     {
         parent::setUp();
 
-        $this->admin = User::factory()->create(['role' => 'admin']);
-        $this->viewer = User::factory()->create(['role' => 'viewer']);
+        $this->admin   = User::factory()->create(['role' => 'admin']);
+        $this->viewer  = User::factory()->create(['role' => 'viewer']);
         $this->category = Category::factory()->create(['name' => 'CPU', 'slug' => 'cpu']);
     }
 
@@ -76,8 +76,10 @@ class ProductTest extends TestCase
         ]);
 
         $response->assertCreated()
-                 ->assertJsonPath('data.name', 'Test Product')
-                 ->assertJsonPath('data.profit_margin', 50.0);
+                 ->assertJsonPath('data.name', 'Test Product');
+
+        // profit_margin = 150 - 100 = 50 (integer dari JSON, bukan float)
+        $this->assertEquals(50, $response->json('data.profit_margin'));
 
         $this->assertDatabaseHas('products', ['sku' => 'CPU-TEST-001']);
     }
@@ -127,7 +129,7 @@ class ProductTest extends TestCase
             'sku'           => 'CPU-INVALID-PRICE',
             'name'          => 'Invalid Price Product',
             'standard_cost' => 200.00,
-            'list_price'    => 100.00, // Less than standard_cost
+            'list_price'    => 100.00,
         ]);
 
         $response->assertUnprocessable()

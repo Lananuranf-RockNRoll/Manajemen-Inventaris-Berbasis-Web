@@ -114,7 +114,8 @@ class TransactionTest extends TestCase
             'status' => 'canceled',
         ]);
 
-        $response->assertServerError();
+        // Controller menangkap Exception dan return 422
+        $response->assertUnprocessable();
     }
 
     public function test_can_list_transactions_by_status(): void
