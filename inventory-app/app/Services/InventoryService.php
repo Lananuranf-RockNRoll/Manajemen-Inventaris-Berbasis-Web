@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Events\StockWentLow;
 use App\Models\Inventory;
 use App\Models\Transaction;
 use Exception;
@@ -12,6 +13,7 @@ class InventoryService
 {
     /**
      * Deduct stock for each item in a shipped transaction.
+     * Fires StockWentLow event immediately when stock crosses min threshold.
      *
      * @throws Exception
      */
@@ -32,7 +34,22 @@ class InventoryService
                         . "Tersedia: {$inventory->qty_available}, Dibutuhkan: {$item->quantity}."
                 );
 
+                $previousQty = $inventory->qty_on_hand;
                 $inventory->decrement('qty_on_hand', $item->quantity);
+                $inventory->refresh();
+
+                // ── Real-time alert: fire event jika baru saja turun ke bawah min_stock ──
+                // Cek: sebelumnya di atas threshold, sekarang di bawah atau sama
+                $wasOk  = ($previousQty - $inventory->qty_reserved) > $inventory->min_stock;
+                $isLow  = $inventory->qty_available <= $inventory->min_stock;
+
+                if ($wasOk && $isLow) {
+                    event(new StockWentLow(
+                        inventory:   $inventory,
+                        previousQty: $previousQty,
+                        newQty:      $inventory->qty_on_hand,
+                    ));
+                }
             }
         });
     }
@@ -61,6 +78,7 @@ class InventoryService
 
     /**
      * Transfer stock between two warehouses.
+     * Also checks low stock threshold on source warehouse after transfer.
      *
      * @throws Exception
      */
@@ -73,7 +91,6 @@ class InventoryService
         if ($fromWarehouseId === $toWarehouseId) {
             throw new Exception('Gudang asal dan tujuan tidak boleh sama.');
         }
-
         if ($qty <= 0) {
             throw new Exception('Jumlah transfer harus lebih dari 0.');
         }
@@ -92,7 +109,20 @@ class InventoryService
                     . "Tersedia: {$source->qty_available}, Dibutuhkan: {$qty}."
             );
 
+            $previousQty = $source->qty_on_hand;
             $source->decrement('qty_on_hand', $qty);
+            $source->refresh();
+
+            // Cek low stock setelah transfer
+            $wasOk = ($previousQty - $source->qty_reserved) > $source->min_stock;
+            $isLow = $source->qty_available <= $source->min_stock;
+            if ($wasOk && $isLow) {
+                event(new StockWentLow(
+                    inventory:   $source,
+                    previousQty: $previousQty,
+                    newQty:      $source->qty_on_hand,
+                ));
+            }
 
             $destination = Inventory::query()
                 ->where('product_id', $productId)
@@ -116,9 +146,7 @@ class InventoryService
 
     // ── Private helpers ─────────────────────────────────────────────────────────
 
-    /**
-     * @throws Exception
-     */
+    /** @throws Exception */
     private function findInventoryOrFail(int $productId, int $warehouseId, string $notFoundMessage): Inventory
     {
         $inventory = Inventory::query()
@@ -134,9 +162,7 @@ class InventoryService
         return $inventory;
     }
 
-    /**
-     * @throws Exception
-     */
+    /** @throws Exception */
     private function ensureSufficientStock(Inventory $inventory, int $requiredQty, string $errorMessage): void
     {
         if ($inventory->qty_available < $requiredQty) {

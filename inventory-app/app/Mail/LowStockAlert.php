@@ -10,21 +10,27 @@ use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Collection;
 
-class LowStockAlert extends Mailable
+class LowStockAlert extends Mailable implements ShouldQueue
 {
     use Queueable, SerializesModels;
 
     /**
      * @param Collection $items  — koleksi Inventory model dengan relasi product & warehouse
+     * @param bool       $isRealtime  — true = dipicu real-time saat stok turun, false = daily digest
      */
     public function __construct(
-        public Collection $items
+        public Collection $items,
+        public bool       $isRealtime = true,
     ) {}
 
     public function envelope(): Envelope
     {
+        $now    = now()->timezone('Asia/Jakarta');
+        $prefix = $this->isRealtime ? '🚨 [Real-time]' : '📋 [Harian]';
+        $date   = $now->format('d/m/Y H:i') . ' WIB';
+
         return new Envelope(
-            subject: 'Peringatan Stok Rendah — ' . now()->format('d/m/Y'),
+            subject: "{$prefix} Peringatan Stok Rendah — {$date}",
         );
     }
 

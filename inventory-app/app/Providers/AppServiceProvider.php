@@ -2,23 +2,33 @@
 
 namespace App\Providers;
 
-use Illuminate\Support\ServiceProvider;
+use App\Events\OrderCanceled;
+use App\Events\OrderShipped;
+use App\Events\StockWentLow;
+use App\Listeners\DeductInventoryOnShip;
+use App\Listeners\RestoreInventoryOnCancel;
+use App\Listeners\SendLowStockNotification;
+use Illuminate\Foundation\Support\Providers\EventServiceProvider as ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
 {
     /**
-     * Register any application services.
+     * Event → Listener mappings
      */
-    public function register(): void
-    {
-        //
-    }
+    protected $listen = [
+        OrderShipped::class => [
+            DeductInventoryOnShip::class,
+        ],
+        OrderCanceled::class => [
+            RestoreInventoryOnCancel::class,
+        ],
+        // Real-time low stock alert → email langsung saat stok turun
+        StockWentLow::class => [
+            SendLowStockNotification::class,
+        ],
+    ];
 
-    /**
-     * Bootstrap any application services.
-     */
-    public function boot(): void
-    {
-        //
-    }
+    public function register(): void {}
+
+    public function boot(): void {}
 }

@@ -1,7 +1,7 @@
 version: "3.9"
 
 # =============================================================
-# InvenSys — Full Docker Stack with Redis
+# InvenSys — Full Docker Stack with Redis + Notifications Queue
 # Usage: docker-compose up --build
 # =============================================================
 
@@ -70,20 +70,19 @@ services:
       DB_DATABASE: ${DB_DATABASE:-inventory_system}
       DB_USERNAME: ${DB_USERNAME:-invensys}
       DB_PASSWORD: ${DB_PASSWORD:-invensys_pass123}
-      # Redis — cache & queue
       REDIS_HOST: redis
       REDIS_PORT: 6379
-      REDIS_PASSWORD: null
       SESSION_DRIVER: redis
       QUEUE_CONNECTION: redis
       CACHE_STORE: redis
       CACHE_PREFIX: invensys_
-      # Mail
-      MAIL_MAILER: ${MAIL_MAILER:-log}
-      MAIL_HOST: ${MAIL_HOST:-}
+      # Mail — pakai SMTP Gmail (isi di .env lokal)
+      MAIL_MAILER: ${MAIL_MAILER:-smtp}
+      MAIL_HOST: ${MAIL_HOST:-smtp.gmail.com}
       MAIL_PORT: ${MAIL_PORT:-587}
       MAIL_USERNAME: ${MAIL_USERNAME:-}
       MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+      MAIL_ENCRYPTION: ${MAIL_ENCRYPTION:-tls}
       MAIL_FROM_ADDRESS: ${MAIL_FROM_ADDRESS:-noreply@invensys.app}
       MAIL_FROM_NAME: InvenSys
       FILESYSTEM_DISK: local
@@ -98,7 +97,7 @@ services:
     networks:
       - invensys_net
 
-  # ─── Nginx (Frontend SPA + API Proxy) ─────────────────────
+  # ─── Nginx ────────────────────────────────────────────────
   nginx:
     build:
       context: .
@@ -114,12 +113,12 @@ services:
     networks:
       - invensys_net
 
-  # ─── Queue Worker (pakai Redis) ───────────────────────────
+  # ─── Queue Worker: default queue ──────────────────────────
   queue:
     image: invensys-backend:latest
     container_name: invensys_queue
     restart: unless-stopped
-    command: ["php", "artisan", "queue:work", "redis", "--tries=3", "--timeout=90", "--sleep=3", "--memory=256"]
+    command: ["php", "artisan", "queue:work", "redis", "--queue=default,notifications", "--tries=3", "--timeout=90", "--sleep=3", "--memory=256"]
     environment:
       APP_KEY: ${APP_KEY}
       APP_ENV: ${APP_ENV:-production}
@@ -135,11 +134,12 @@ services:
       QUEUE_CONNECTION: redis
       CACHE_STORE: redis
       CACHE_PREFIX: invensys_
-      MAIL_MAILER: ${MAIL_MAILER:-log}
-      MAIL_HOST: ${MAIL_HOST:-}
+      MAIL_MAILER: ${MAIL_MAILER:-smtp}
+      MAIL_HOST: ${MAIL_HOST:-smtp.gmail.com}
       MAIL_PORT: ${MAIL_PORT:-587}
       MAIL_USERNAME: ${MAIL_USERNAME:-}
       MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+      MAIL_ENCRYPTION: ${MAIL_ENCRYPTION:-tls}
       MAIL_FROM_ADDRESS: ${MAIL_FROM_ADDRESS:-noreply@invensys.app}
     volumes:
       - app_storage:/var/www/html/storage/app
@@ -171,7 +171,12 @@ services:
       QUEUE_CONNECTION: redis
       CACHE_STORE: redis
       CACHE_PREFIX: invensys_
-      MAIL_MAILER: ${MAIL_MAILER:-log}
+      MAIL_MAILER: ${MAIL_MAILER:-smtp}
+      MAIL_HOST: ${MAIL_HOST:-smtp.gmail.com}
+      MAIL_PORT: ${MAIL_PORT:-587}
+      MAIL_USERNAME: ${MAIL_USERNAME:-}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+      MAIL_ENCRYPTION: ${MAIL_ENCRYPTION:-tls}
       MAIL_FROM_ADDRESS: ${MAIL_FROM_ADDRESS:-noreply@invensys.app}
     volumes:
       - app_storage:/var/www/html/storage/app
