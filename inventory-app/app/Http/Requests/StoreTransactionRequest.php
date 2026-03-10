@@ -2,17 +2,18 @@
 
 namespace App\Http\Requests;
 
+use App\Enums\Permission;
 use Illuminate\Foundation\Http\FormRequest;
 
 class StoreTransactionRequest extends FormRequest
 {
     /**
-     * Otorisasi diserahkan sepenuhnya ke middleware role:admin,manager,staff di routes/api.php.
-     * Method ini mengembalikan true agar tidak terjadi pengecekan dobel.
+     * Otorisasi dicek di middleware (permission:transaction.create) DAN di sini
+     * sebagai lapisan kedua — defense in depth.
      */
     public function authorize(): bool
     {
-        return true;
+        return $this->user()?->can(Permission::TRANSACTION_CREATE) ?? false;
     }
 
     public function rules(): array

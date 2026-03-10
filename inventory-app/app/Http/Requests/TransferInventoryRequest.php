@@ -2,13 +2,14 @@
 
 namespace App\Http\Requests;
 
+use App\Enums\Permission;
 use Illuminate\Foundation\Http\FormRequest;
 
 class TransferInventoryRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user()->hasAnyRole(['admin', 'manager']);
+        return $this->user()?->can(Permission::INVENTORY_TRANSFER) ?? false;
     }
 
     public function rules(): array

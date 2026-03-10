@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Enums\Permission;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\CategoryResource;
 use App\Models\Category;
@@ -13,6 +14,7 @@ class CategoryController extends Controller
 {
     /**
      * GET /api/categories
+     * Akses: semua role
      */
     public function index(Request $request): JsonResponse
     {
@@ -27,18 +29,22 @@ class CategoryController extends Controller
 
     /**
      * POST /api/categories
+     * Akses: manager, admin
      */
     public function store(Request $request): JsonResponse
     {
+        // Lapisan 2 — defense in depth (lapisan 1 di middleware)
+        if (! $request->user()->can(Permission::CATEGORY_CREATE)) {
+            return response()->json(['message' => 'Anda tidak memiliki izin untuk membuat kategori.'], 403);
+        }
+
         $validated = $request->validate([
             'name'        => 'required|string|max:100|unique:categories,name',
             'description' => 'nullable|string',
             'is_active'   => 'boolean',
         ]);
 
-        if (empty($validated['slug'])) {
-            $validated['slug'] = Str::slug($validated['name']);
-        }
+        $validated['slug'] = Str::slug($validated['name']);
 
         $category = Category::create($validated);
 
@@ -46,7 +52,8 @@ class CategoryController extends Controller
     }
 
     /**
-     * GET /api/categories/{id}
+     * GET /api/categories/{category}
+     * Akses: semua role
      */
     public function show(Category $category): JsonResponse
     {
@@ -54,10 +61,15 @@ class CategoryController extends Controller
     }
 
     /**
-     * PUT /api/categories/{id}
+     * PUT /api/categories/{category}
+     * Akses: manager, admin
      */
     public function update(Request $request, Category $category): JsonResponse
     {
+        if (! $request->user()->can(Permission::CATEGORY_UPDATE)) {
+            return response()->json(['message' => 'Anda tidak memiliki izin untuk mengubah kategori.'], 403);
+        }
+
         $validated = $request->validate([
             'name'        => 'sometimes|string|max:100|unique:categories,name,' . $category->id,
             'description' => 'nullable|string',
@@ -74,10 +86,15 @@ class CategoryController extends Controller
     }
 
     /**
-     * DELETE /api/categories/{id}
+     * DELETE /api/categories/{category}
+     * Akses: admin only
      */
-    public function destroy(Category $category): JsonResponse
+    public function destroy(Request $request, Category $category): JsonResponse
     {
+        if (! $request->user()->can(Permission::CATEGORY_DELETE)) {
+            return response()->json(['message' => 'Anda tidak memiliki izin untuk menghapus kategori.'], 403);
+        }
+
         if ($category->products()->exists()) {
             return response()->json([
                 'message' => 'Kategori tidak dapat dihapus karena memiliki produk.',

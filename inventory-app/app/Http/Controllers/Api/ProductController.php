@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Enums\Permission;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreProductRequest;
 use App\Http\Requests\UpdateProductRequest;
@@ -14,7 +15,7 @@ class ProductController extends Controller
 {
     /**
      * GET /api/products
-     * Params: ?search=&category_id=&per_page=15&active=1
+     * Akses: semua role (viewer, staff, manager, admin)
      */
     public function index(Request $request): JsonResponse
     {
@@ -30,6 +31,8 @@ class ProductController extends Controller
 
     /**
      * POST /api/products
+     * Akses: manager, admin
+     * Double-checked: middleware permission:product.create + FormRequest::authorize()
      */
     public function store(StoreProductRequest $request): JsonResponse
     {
@@ -42,6 +45,7 @@ class ProductController extends Controller
 
     /**
      * GET /api/products/{product}
+     * Akses: semua role
      */
     public function show(Product $product): JsonResponse
     {
@@ -52,6 +56,8 @@ class ProductController extends Controller
 
     /**
      * PUT /api/products/{product}
+     * Akses: manager, admin
+     * Double-checked: middleware permission:product.update + FormRequest::authorize()
      */
     public function update(UpdateProductRequest $request, Product $product): JsonResponse
     {
@@ -62,9 +68,18 @@ class ProductController extends Controller
 
     /**
      * DELETE /api/products/{product}
+     * Akses: admin only
+     * Double-checked: middleware permission:product.delete + cek di bawah
      */
-    public function destroy(Product $product): JsonResponse
+    public function destroy(Request $request, Product $product): JsonResponse
     {
+        // Lapisan 2 — defense in depth
+        if (! $request->user()->can(Permission::PRODUCT_DELETE)) {
+            return response()->json([
+                'message' => 'Anda tidak memiliki izin untuk menghapus produk.',
+            ], 403);
+        }
+
         $product->delete();
 
         return response()->json(['message' => 'Produk berhasil dihapus.']);

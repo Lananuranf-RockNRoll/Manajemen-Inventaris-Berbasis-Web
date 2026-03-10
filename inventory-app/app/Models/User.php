@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Enums\Permission;
+use App\Traits\HasPermissions;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -11,7 +13,7 @@ use Laravel\Sanctum\HasApiTokens;
 
 class User extends Authenticatable
 {
-    use HasApiTokens, HasFactory, Notifiable, SoftDeletes;
+    use HasApiTokens, HasFactory, HasPermissions, Notifiable, SoftDeletes;
 
     protected $fillable = [
         'name',
@@ -41,14 +43,17 @@ class User extends Authenticatable
         return $this->hasOne(Employee::class);
     }
 
-    // ── Helpers ─────────────────────────────────────────────────────────────────
-    public function hasRole(string $role): bool
+    /**
+     * Override Laravel's Gate-based can() agar menggunakan Permission enum kita.
+     * Jika argument bukan Permission enum, delegate ke parent (Gate).
+     */
+    public function can($permission, $arguments = []): bool
     {
-        return $this->role === $role;
-    }
+        if ($permission instanceof Permission) {
+            return in_array($permission, $this->permissions(), strict: true);
+        }
 
-    public function hasAnyRole(array $roles): bool
-    {
-        return in_array($this->role, $roles);
+        // Fallback ke Laravel Gate untuk kompatibilitas
+        return parent::can($permission, $arguments);
     }
 }

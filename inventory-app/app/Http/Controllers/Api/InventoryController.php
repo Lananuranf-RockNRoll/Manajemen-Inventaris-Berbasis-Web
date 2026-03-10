@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Enums\Permission;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\TransferInventoryRequest;
 use App\Http\Resources\InventoryResource;
@@ -19,7 +20,7 @@ class InventoryController extends Controller
 
     /**
      * GET /api/inventory
-     * Params: ?warehouse_id=1&product_id=2&low_stock=true&per_page=20
+     * Akses: semua role
      */
     public function index(Request $request): JsonResponse
     {
@@ -34,6 +35,7 @@ class InventoryController extends Controller
 
     /**
      * GET /api/inventory/{inventory}
+     * Akses: semua role
      */
     public function show(Inventory $inventory): JsonResponse
     {
@@ -44,10 +46,15 @@ class InventoryController extends Controller
 
     /**
      * PUT /api/inventory/{inventory}
-     * Manual restock / update.
+     * Manual restock / update. Akses: manager, admin
      */
     public function update(Request $request, Inventory $inventory): JsonResponse
     {
+        // Lapisan 2 — defense in depth
+        if (! $request->user()->can(Permission::INVENTORY_UPDATE)) {
+            return response()->json(['message' => 'Anda tidak memiliki izin untuk mengubah inventaris.'], 403);
+        }
+
         $validated = $request->validate([
             'qty_on_hand'  => 'sometimes|integer|min:0',
             'qty_reserved' => 'sometimes|integer|min:0',
@@ -66,6 +73,8 @@ class InventoryController extends Controller
 
     /**
      * POST /api/inventory/transfer
+     * Akses: manager, admin
+     * Double-checked: middleware permission:inventory.transfer + FormRequest::authorize()
      */
     public function transfer(TransferInventoryRequest $request): JsonResponse
     {
@@ -85,6 +94,7 @@ class InventoryController extends Controller
 
     /**
      * GET /api/inventory/alerts/low-stock
+     * Akses: semua role
      */
     public function lowStock(Request $request): JsonResponse
     {

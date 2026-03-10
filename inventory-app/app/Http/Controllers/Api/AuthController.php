@@ -38,8 +38,9 @@ class AuthController extends Controller
         return response()->json([
             'message' => 'Login berhasil.',
             'data'    => [
-                'user'  => $this->formatUser($user),
-                'token' => $token,
+                'user'        => $this->formatUser($user),
+                'token'       => $token,
+                'permissions' => $this->formatPermissions($user),
             ],
         ]);
     }
@@ -56,15 +57,39 @@ class AuthController extends Controller
 
     /**
      * GET /api/auth/me
+     * Mengembalikan profil user beserta daftar permissions aktif.
      */
     public function me(Request $request): JsonResponse
     {
+        $user = $request->user();
+
         return response()->json([
-            'data' => $this->formatUser($request->user()),
+            'data' => [
+                ...$this->formatUser($user),
+                'permissions' => $this->formatPermissions($user),
+            ],
         ]);
     }
 
-    /** Format user untuk response */
+    /**
+     * GET /api/auth/permissions
+     * Endpoint khusus untuk frontend mengambil daftar permission user yang sedang login.
+     * Berguna untuk menyembunyikan/menampilkan UI berdasarkan hak akses.
+     */
+    public function permissions(Request $request): JsonResponse
+    {
+        $user = $request->user();
+
+        return response()->json([
+            'data' => [
+                'role'        => $user->role,
+                'permissions' => $this->formatPermissions($user),
+            ],
+        ]);
+    }
+
+    // ── Private helpers ───────────────────────────────────────────────────────
+
     private function formatUser(User $user): array
     {
         return [
@@ -75,5 +100,17 @@ class AuthController extends Controller
             'is_active'  => $user->is_active,
             'created_at' => $user->created_at,
         ];
+    }
+
+    /**
+     * Kembalikan array string dari permission values — mudah dikonsumsi frontend.
+     * Contoh: ['product.view', 'product.create', 'transaction.view', ...]
+     */
+    private function formatPermissions(User $user): array
+    {
+        return array_map(
+            fn ($permission) => $permission->value,
+            $user->permissions()
+        );
     }
 }

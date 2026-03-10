@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Enums\Permission;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreTransactionRequest;
 use App\Http\Resources\TransactionResource;
@@ -20,7 +21,6 @@ class TransactionController extends Controller
 
     /**
      * GET /api/transactions
-     * Params: ?status=&from=&to=&customer_id=&per_page=20
      */
     public function index(Request $request): JsonResponse
     {
@@ -39,6 +39,7 @@ class TransactionController extends Controller
 
     /**
      * POST /api/transactions
+     * Akses: staff, manager, admin
      */
     public function store(StoreTransactionRequest $request): JsonResponse
     {
@@ -65,10 +66,31 @@ class TransactionController extends Controller
 
     /**
      * PUT /api/transactions/{transaction}
-     * Hanya update field notes.
+     * Edit field notes saja. Akses: staff, manager, admin.
+     *
+     * Batasan tambahan per role:
+     * - Staff: hanya bisa edit notes transaksi berstatus pending yang dia buat.
+     * - Manager & Admin: bisa edit notes semua transaksi.
      */
     public function update(Request $request, Transaction $transaction): JsonResponse
     {
+        $user = $request->user();
+
+        // Staff hanya bisa edit transaksi pending miliknya sendiri
+        if ($user->isStaff()) {
+            if ($transaction->status !== 'pending') {
+                return response()->json([
+                    'message' => 'Staff hanya dapat mengedit catatan transaksi berstatus pending.',
+                ], 403);
+            }
+
+            if ($transaction->employee_id && $transaction->employee?->user_id !== $user->id) {
+                return response()->json([
+                    'message' => 'Anda hanya dapat mengedit transaksi yang Anda buat.',
+                ], 403);
+            }
+        }
+
         $validated = $request->validate([
             'notes' => 'nullable|string|max:1000',
         ]);
@@ -80,11 +102,13 @@ class TransactionController extends Controller
 
     /**
      * DELETE /api/transactions/{transaction}
-     * Hanya boleh saat status pending.
-     * Dibungkus DB::transaction agar atomik — jika salah satu gagal semua di-rollback.
+     * Akses: admin only.
+     * Aturan bisnis: hanya transaksi berstatus pending yang dapat dihapus.
      */
     public function destroy(Transaction $transaction): JsonResponse
     {
+        // Lapisan 2: validasi di controller (defense in depth)
+        // Lapisan 1 sudah di middleware permission:transaction.delete (admin only)
         if ($transaction->status !== 'pending') {
             return response()->json([
                 'message' => 'Hanya transaksi berstatus pending yang dapat dihapus.',
@@ -101,9 +125,23 @@ class TransactionController extends Controller
 
     /**
      * PATCH /api/transactions/{transaction}/status
+     * Akses: manager, admin.
+     *
+     * Batasan tambahan:
+     * - Manager: tidak bisa mengubah status transaksi yang sudah 'delivered'.
+     * - Admin: bebas mengubah status sesuai flow.
      */
     public function updateStatus(Request $request, Transaction $transaction): JsonResponse
     {
+        $user = $request->user();
+
+        // Manager tidak bisa menyentuh transaksi yang sudah delivered
+        if ($user->isManager() && $transaction->status === 'delivered') {
+            return response()->json([
+                'message' => 'Manajer tidak dapat mengubah status transaksi yang sudah selesai (delivered).',
+            ], 403);
+        }
+
         $request->validate([
             'status' => 'required|in:pending,processing,shipped,delivered,canceled',
         ]);
