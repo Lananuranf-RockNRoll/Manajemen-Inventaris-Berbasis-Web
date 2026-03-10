@@ -1,14 +1,42 @@
-# IDE
+# ============================================================
+# InvenSys — Root .gitignore
+# ============================================================
+
+# ── Environment / Secrets ───────────────────────────────────
+.env
+.env.*
+!.env.example
+!.env.docker.example
+
+# Subproject envs
+inventory-app/.env
+inventory-app/.env.*
+!inventory-app/.env.example
+
+inventory-ui/.env
+inventory-ui/.env.*
+!inventory-ui/.env.example
+
+# ── IDE / Editor ────────────────────────────────────────────
 .idea/
 .vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
 
-# Docker env (contains secrets)
-.env
-.env.docker
-
-# OS
+# ── OS ──────────────────────────────────────────────────────
 .DS_Store
 Thumbs.db
+desktop.ini
 
-# Logs
+# ── Logs ────────────────────────────────────────────────────
 *.log
+logs/
+
+# ── Docker ──────────────────────────────────────────────────
+# (docker-compose.yml and Dockerfile are committed, not secrets)
+
+# ── Kubernetes secrets ──────────────────────────────────────
+k8s/secret.yaml

@@ -5,7 +5,6 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
-lerna-debug.log*
 
 node_modules
 .DS_Store
@@ -14,25 +13,23 @@ dist-ssr
 coverage
 *.local
 
-# Editor directories and files
+# Environment — JANGAN commit ke Git
+.env
+.env.*
+!.env.example
+
+# Editor
 .vscode/*
 !.vscode/extensions.json
 .idea
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
-*.sw?
+*.suo *.ntvs* *.njsproj *.sln *.sw?
 
 *.tsbuildinfo
-
 .eslintcache
 
-# Cypress
+# Cypress / Vitest
 /cypress/videos/
 /cypress/screenshots/
-
-# Vitest
 __screenshots__/
 
 # Vite
