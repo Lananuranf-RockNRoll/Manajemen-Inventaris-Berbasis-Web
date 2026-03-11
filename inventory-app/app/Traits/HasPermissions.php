@@ -9,9 +9,12 @@ use App\Enums\Role;
  * HasPermissions — tambahkan ke User model untuk cek hak akses berbasis Permission enum.
  *
  * Cara pakai:
- *   $user->can(Permission::PRODUCT_CREATE)        // true/false
+ *   $user->can(Permission::PRODUCT_CREATE)     // true/false
  *   $user->canAny([Permission::PRODUCT_CREATE, Permission::PRODUCT_UPDATE])
- *   $user->mustCan(Permission::PRODUCT_DELETE)    // throw 403 jika tidak punya
+ *   $user->canAll([Permission::PRODUCT_CREATE, Permission::PRODUCT_UPDATE])
+ *
+ * CATATAN: method can() TIDAK didefinisikan di sini.
+ * Override can() ada di User model agar tidak konflik dengan Laravel Gate.
  */
 trait HasPermissions
 {
@@ -29,14 +32,6 @@ trait HasPermissions
         }
 
         return $this->resolvedPermissions;
-    }
-
-    /**
-     * Cek apakah user punya permission tertentu.
-     */
-    public function can(Permission $permission, mixed $arguments = []): bool
-    {
-        return in_array($permission, $this->permissions(), strict: true);
     }
 
     /**
@@ -71,7 +66,7 @@ trait HasPermissions
         return true;
     }
 
-    // ── Role helpers (backward-compatible) ───────────────────────────────────
+    // ── Role helpers ─────────────────────────────────────────────────────────
 
     public function hasRole(string $role): bool
     {
