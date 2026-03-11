@@ -5,7 +5,7 @@
         <h2 class="text-lg font-bold text-zinc-100">Karyawan</h2>
         <p class="text-xs text-zinc-500">{{ meta?.total ?? 0 }} karyawan</p>
       </div>
-      <button v-if="auth.canCreate" @click="openCreate" class="btn-primary">
+      <button v-if="auth.canCreateEmployee" @click="openCreate" class="btn-primary">
         <Plus class="w-4 h-4" /> Tambah Karyawan
       </button>
     </div>
@@ -28,7 +28,7 @@
             <th class="th">Gudang</th>
             <th class="th">Tanggal Masuk</th>
             <th class="th text-center">Status</th>
-            <th v-if="auth.canEdit || auth.canDelete" class="th text-center">Aksi</th>
+            <th v-if="auth.canEditEmployee || auth.canDeleteEmployee" class="th text-center">Aksi</th>
           </tr>
         </thead>
         <tbody>
@@ -46,12 +46,12 @@
                 {{ emp.is_active ? 'Aktif' : 'Nonaktif' }}
               </span>
             </td>
-            <td v-if="auth.canEdit || auth.canDelete" class="td text-center">
+            <td v-if="auth.canEditEmployee || auth.canDeleteEmployee" class="td text-center">
               <div class="flex items-center justify-center gap-2">
-                <button v-if="auth.canEdit" @click="openEdit(emp)" class="btn-icon text-zinc-400 hover:text-indigo-400">
+                <button v-if="auth.canEditEmployee" @click="openEdit(emp)" class="btn-icon text-zinc-400 hover:text-indigo-400">
                   <Pencil class="w-3.5 h-3.5" />
                 </button>
-                <button v-if="auth.canDelete" @click="confirmDelete(emp)" class="btn-icon text-zinc-400 hover:text-red-400">
+                <button v-if="auth.canDeleteEmployee" @click="confirmDelete(emp)" class="btn-icon text-zinc-400 hover:text-red-400">
                   <Trash2 class="w-3.5 h-3.5" />
                 </button>
               </div>
@@ -155,18 +155,18 @@ import { useAuthStore } from '@/stores/auth'
 import type { Employee, Warehouse, PaginationMeta } from '@/types'
 
 const auth = useAuthStore()
-const employees = ref<Employee[]>([])
-const warehouses = ref<Warehouse[]>([])
-const meta = ref<PaginationMeta | null>(null)
-const loading = ref(true)
-const search = ref('')
+const employees      = ref<Employee[]>([])
+const warehouses     = ref<Warehouse[]>([])
+const meta           = ref<PaginationMeta | null>(null)
+const loading        = ref(true)
+const search         = ref('')
 const warehouseFilter = ref('')
-const showModal = ref(false)
+const showModal      = ref(false)
 const showDeleteModal = ref(false)
-const editingEmp = ref<Employee | null>(null)
-const deletingEmp = ref<Employee | null>(null)
-const submitting = ref(false)
-const formError = ref('')
+const editingEmp     = ref<Employee | null>(null)
+const deletingEmp    = ref<Employee | null>(null)
+const submitting     = ref(false)
+const formError      = ref('')
 
 const form = ref({ name: '', email: '', phone: '', job_title: '', department: '', warehouse_id: '', hire_date: '', is_active: true })
 
@@ -190,13 +190,10 @@ async function fetchEmployees(page = 1) {
     const res = await employeesApi.list({ page, search: search.value || undefined, warehouse_id: warehouseFilter.value || undefined, per_page: 15 })
     employees.value = res.data.data
     meta.value = res.data.meta
-  } finally {
-    loading.value = false
-  }
+  } finally { loading.value = false }
 }
 
 function openCreate() {
-  if (!auth.canCreate) return
   editingEmp.value = null
   form.value = { name: '', email: '', phone: '', job_title: '', department: '', warehouse_id: '', hire_date: '', is_active: true }
   formError.value = ''
@@ -204,7 +201,6 @@ function openCreate() {
 }
 
 function openEdit(emp: Employee) {
-  if (!auth.canEdit) return
   editingEmp.value = emp
   form.value = { name: emp.name, email: emp.email, phone: emp.phone ?? '', job_title: emp.job_title ?? '', department: emp.department ?? '', warehouse_id: String(emp.warehouse_id ?? ''), hire_date: emp.hire_date ?? '', is_active: emp.is_active }
   formError.value = ''
@@ -212,27 +208,20 @@ function openEdit(emp: Employee) {
 }
 
 function confirmDelete(emp: Employee) {
-  if (!auth.canDelete) return
   deletingEmp.value = emp
   showDeleteModal.value = true
 }
 
 async function handleSubmit() {
-  submitting.value = true
-  formError.value = ''
+  submitting.value = true; formError.value = ''
   try {
-    if (editingEmp.value) {
-      await employeesApi.update(editingEmp.value.id, form.value)
-    } else {
-      await employeesApi.create(form.value)
-    }
+    if (editingEmp.value) { await employeesApi.update(editingEmp.value.id, form.value) }
+    else { await employeesApi.create(form.value) }
     showModal.value = false
     fetchEmployees(meta.value?.current_page ?? 1)
   } catch (e: any) {
     formError.value = e.response?.data?.message ?? 'Gagal menyimpan'
-  } finally {
-    submitting.value = false
-  }
+  } finally { submitting.value = false }
 }
 
 async function handleDelete() {
@@ -242,9 +231,7 @@ async function handleDelete() {
     await employeesApi.destroy(deletingEmp.value.id)
     showDeleteModal.value = false
     fetchEmployees(meta.value?.current_page ?? 1)
-  } finally {
-    submitting.value = false
-  }
+  } finally { submitting.value = false }
 }
 
 onMounted(async () => {

@@ -5,7 +5,7 @@
         <h2 class="text-lg font-bold text-zinc-100">Kategori</h2>
         <p class="text-xs text-zinc-500">{{ meta?.total ?? 0 }} kategori</p>
       </div>
-      <button v-if="auth.canCreate" @click="openCreate" class="btn-primary">
+      <button v-if="auth.canCreateCategory" @click="openCreate" class="btn-primary">
         <Plus class="w-4 h-4" /> Tambah Kategori
       </button>
     </div>
@@ -19,7 +19,7 @@
             <th class="th">Slug</th>
             <th class="th">Deskripsi</th>
             <th class="th text-center">Status</th>
-            <th v-if="auth.canEdit || auth.canDelete" class="th text-center">Aksi</th>
+            <th v-if="auth.canEditCategory || auth.canDeleteCategory" class="th text-center">Aksi</th>
           </tr>
         </thead>
         <tbody>
@@ -33,12 +33,12 @@
                 {{ cat.is_active ? 'Aktif' : 'Nonaktif' }}
               </span>
             </td>
-            <td v-if="auth.canEdit || auth.canDelete" class="td text-center">
+            <td v-if="auth.canEditCategory || auth.canDeleteCategory" class="td text-center">
               <div class="flex items-center justify-center gap-2">
-                <button v-if="auth.canEdit" @click="openEdit(cat)" class="btn-icon text-zinc-400 hover:text-indigo-400">
+                <button v-if="auth.canEditCategory" @click="openEdit(cat)" class="btn-icon text-zinc-400 hover:text-indigo-400">
                   <Pencil class="w-3.5 h-3.5" />
                 </button>
-                <button v-if="auth.canDelete" @click="confirmDelete(cat)" class="btn-icon text-zinc-400 hover:text-red-400">
+                <button v-if="auth.canDeleteCategory" @click="confirmDelete(cat)" class="btn-icon text-zinc-400 hover:text-red-400">
                   <Trash2 class="w-3.5 h-3.5" />
                 </button>
               </div>
@@ -122,13 +122,10 @@ async function fetchCategories() {
     const res = await categoriesApi.list({ per_page: 50 })
     categories.value = res.data.data
     meta.value = res.data.meta
-  } finally {
-    loading.value = false
-  }
+  } finally { loading.value = false }
 }
 
 function openCreate() {
-  if (!auth.canCreate) return
   editingCat.value = null
   form.value = { name: '', description: '', is_active: true }
   formError.value = ''
@@ -136,7 +133,6 @@ function openCreate() {
 }
 
 function openEdit(cat: Category) {
-  if (!auth.canEdit) return
   editingCat.value = cat
   form.value = { name: cat.name, description: cat.description ?? '', is_active: cat.is_active }
   formError.value = ''
@@ -144,7 +140,6 @@ function openEdit(cat: Category) {
 }
 
 function confirmDelete(cat: Category) {
-  if (!auth.canDelete) return
   deletingCat.value = cat
   showDeleteModal.value = true
 }
@@ -153,18 +148,13 @@ async function handleSubmit() {
   submitting.value = true
   formError.value = ''
   try {
-    if (editingCat.value) {
-      await categoriesApi.update(editingCat.value.id, form.value)
-    } else {
-      await categoriesApi.create(form.value)
-    }
+    if (editingCat.value) { await categoriesApi.update(editingCat.value.id, form.value) }
+    else { await categoriesApi.create(form.value) }
     showModal.value = false
     fetchCategories()
   } catch (e: any) {
     formError.value = e.response?.data?.message ?? 'Gagal menyimpan'
-  } finally {
-    submitting.value = false
-  }
+  } finally { submitting.value = false }
 }
 
 async function handleDelete() {
@@ -174,9 +164,7 @@ async function handleDelete() {
     await categoriesApi.destroy(deletingCat.value.id)
     showDeleteModal.value = false
     fetchCategories()
-  } finally {
-    submitting.value = false
-  }
+  } finally { submitting.value = false }
 }
 
 onMounted(fetchCategories)

@@ -12,7 +12,7 @@
           <FileSpreadsheet class="w-3.5 h-3.5" />
           <span>{{ exporting ? 'Loading...' : 'Excel' }}</span>
         </button>
-        <button v-if="auth.canTransfer" @click="openTransfer" class="btn-primary">
+        <button v-if="auth.canTransferInventory" @click="openTransfer" class="btn-primary">
           <ArrowLeftRight class="w-4 h-4" />
           <span class="hidden sm:inline">Transfer Stok</span>
           <span class="sm:hidden">Transfer</span>
@@ -47,25 +47,20 @@
                 <th class="th text-right">Tersedia</th>
                 <th class="th text-right">Min Stok</th>
                 <th class="th text-center">Status</th>
-                <th v-if="auth.canEdit" class="th text-center">Aksi</th>
+                <th v-if="auth.canEditInventory" class="th text-center">Aksi</th>
               </tr>
             </thead>
             <tbody>
-              <tr
-                v-for="inv in inventory"
-                :key="inv.id"
-                class="border-b border-zinc-800/50 hover:bg-zinc-800/30 transition-colors"
-              >
+              <tr v-for="inv in inventory" :key="inv.id"
+                class="border-b border-zinc-800/50 hover:bg-zinc-800/30 transition-colors">
                 <td class="td">
                   <p class="text-sm font-medium text-zinc-200">{{ inv.product?.name }}</p>
                   <p class="text-xs font-mono text-indigo-400">{{ inv.product?.sku }}</p>
                 </td>
                 <td class="td text-sm text-zinc-400">{{ inv.warehouse?.name }}</td>
                 <td class="td text-right text-sm font-bold text-zinc-200 tabular-nums">{{ inv.qty_on_hand }}</td>
-                <td
-                  class="td text-right text-sm font-bold tabular-nums"
-                  :class="inv.is_low_stock ? 'text-amber-400' : 'text-emerald-400'"
-                >
+                <td class="td text-right text-sm font-bold tabular-nums"
+                  :class="inv.is_low_stock ? 'text-amber-400' : 'text-emerald-400'">
                   {{ inv.qty_available }}
                 </td>
                 <td class="td text-right text-sm text-zinc-500 tabular-nums">{{ inv.min_stock }}</td>
@@ -73,7 +68,7 @@
                   <span v-if="inv.is_low_stock" class="badge-amber">Stok Rendah</span>
                   <span v-else class="badge-green">Normal</span>
                 </td>
-                <td v-if="auth.canEdit" class="td text-center">
+                <td v-if="auth.canEditInventory" class="td text-center">
                   <button @click="openUpdate(inv)" class="btn-icon text-zinc-400 hover:text-indigo-400" title="Update stok">
                     <Pencil class="w-3.5 h-3.5" />
                   </button>
@@ -85,11 +80,7 @@
 
         <!-- Mobile cards -->
         <div class="sm:hidden divide-y divide-zinc-800">
-          <div
-            v-for="inv in inventory"
-            :key="inv.id"
-            class="p-4 hover:bg-zinc-800/30 transition-colors"
-          >
+          <div v-for="inv in inventory" :key="inv.id" class="p-4 hover:bg-zinc-800/30 transition-colors">
             <div class="flex items-start justify-between gap-3">
               <div class="min-w-0 flex-1">
                 <p class="text-sm font-semibold text-zinc-200 truncate">{{ inv.product?.name }}</p>
@@ -104,11 +95,8 @@
                   <span v-else class="badge-green text-[10px]">Normal</span>
                 </div>
               </div>
-              <button
-                v-if="auth.canEdit"
-                @click="openUpdate(inv)"
-                class="btn-icon text-zinc-400 hover:text-indigo-400 shrink-0"
-              >
+              <button v-if="auth.canEditInventory" @click="openUpdate(inv)"
+                class="btn-icon text-zinc-400 hover:text-indigo-400 shrink-0">
                 <Pencil class="w-4 h-4" />
               </button>
             </div>
@@ -129,17 +117,9 @@
       <span class="hidden sm:block">Menampilkan {{ meta.from }}–{{ meta.to }} dari {{ meta.total }}</span>
       <span class="sm:hidden">{{ meta.current_page }} / {{ meta.last_page }}</span>
       <div class="flex gap-1">
-        <button
-          v-for="page in visiblePages"
-          :key="page"
-          @click="fetchInventory(page)"
-          :class="[
-            'px-3 py-1.5 rounded-lg transition-colors text-xs font-medium',
-            page === meta.current_page
-              ? 'bg-indigo-600 text-white'
-              : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700',
-          ]"
-        >
+        <button v-for="page in visiblePages" :key="page" @click="fetchInventory(page)"
+          :class="['px-3 py-1.5 rounded-lg transition-colors text-xs font-medium',
+            page === meta.current_page ? 'bg-indigo-600 text-white' : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700']">
           {{ page }}
         </button>
       </div>
@@ -200,12 +180,8 @@
                 <label class="label">Ke Gudang *</label>
                 <select v-model="transferForm.to_warehouse_id" required class="input-field w-full">
                   <option value="">Pilih Gudang</option>
-                  <option
-                    v-for="w in warehouses"
-                    :key="w.id"
-                    :value="w.id"
-                    :disabled="w.id === transferForm.from_warehouse_id"
-                  >
+                  <option v-for="w in warehouses" :key="w.id" :value="w.id"
+                    :disabled="w.id === transferForm.from_warehouse_id">
                     {{ w.name }}
                   </option>
                 </select>
@@ -228,7 +204,6 @@
         </div>
       </div>
     </Teleport>
-
   </div>
 </template>
 
@@ -243,7 +218,6 @@ import { useAuthStore } from '@/stores/auth'
 import type { Inventory, Warehouse, Product, PaginationMeta } from '@/types'
 
 const auth = useAuthStore()
-
 const inventory         = ref<Inventory[]>([])
 const warehouses        = ref<Warehouse[]>([])
 const products          = ref<Product[]>([])
@@ -280,9 +254,7 @@ async function fetchInventory(page = 1): Promise<void> {
     })
     inventory.value = res.data.data
     meta.value = res.data.meta
-  } finally {
-    loading.value = false
-  }
+  } finally { loading.value = false }
 }
 
 async function exportExcel(): Promise<void> {
@@ -295,8 +267,8 @@ async function exportExcel(): Promise<void> {
 }
 
 function openUpdate(inv: Inventory): void {
-  updatingInv.value  = inv
-  updateForm.value   = { qty_on_hand: inv.qty_on_hand, min_stock: inv.min_stock, max_stock: inv.max_stock }
+  updatingInv.value = inv
+  updateForm.value  = { qty_on_hand: inv.qty_on_hand, min_stock: inv.min_stock, max_stock: inv.max_stock }
   showUpdateModal.value = true
 }
 
@@ -313,25 +285,18 @@ async function handleUpdate(): Promise<void> {
     await inventoryApi.update(updatingInv.value.id, updateForm.value)
     showUpdateModal.value = false
     await fetchInventory(meta.value?.current_page ?? 1)
-  } catch (e: any) {
-    alert(e.response?.data?.message ?? 'Gagal update stok')
-  } finally {
-    submitting.value = false
-  }
+  } catch (e: any) { alert(e.response?.data?.message ?? 'Gagal update stok') }
+  finally { submitting.value = false }
 }
 
 async function handleTransfer(): Promise<void> {
-  submitting.value = true
-  formError.value = ''
+  submitting.value = true; formError.value = ''
   try {
     await inventoryApi.transfer(transferForm.value)
     showTransferModal.value = false
     await fetchInventory(meta.value?.current_page ?? 1)
-  } catch (e: any) {
-    formError.value = e.response?.data?.message ?? 'Gagal transfer stok'
-  } finally {
-    submitting.value = false
-  }
+  } catch (e: any) { formError.value = e.response?.data?.message ?? 'Gagal transfer stok' }
+  finally { submitting.value = false }
 }
 
 onMounted(async (): Promise<void> => {

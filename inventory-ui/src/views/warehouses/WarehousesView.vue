@@ -5,7 +5,7 @@
         <h2 class="text-lg font-bold text-zinc-100">Gudang</h2>
         <p class="text-xs text-zinc-500">{{ meta?.total ?? 0 }} gudang</p>
       </div>
-      <button v-if="auth.canCreate" @click="openCreate" class="btn-primary">
+      <button v-if="auth.canCreateWarehouse" @click="openCreate" class="btn-primary">
         <Plus class="w-4 h-4" /> Tambah Gudang
       </button>
     </div>
@@ -38,12 +38,11 @@
             <span>{{ wh.region ?? '—' }}</span>
           </div>
         </div>
-        <!-- Only show action buttons if user has permission -->
-        <div v-if="auth.canEdit || auth.canDelete" class="flex gap-2 pt-3 border-t border-zinc-800">
-          <button v-if="auth.canEdit" @click="openEdit(wh)" class="btn-secondary flex-1 text-xs py-1.5">
+        <div v-if="auth.canEditWarehouse || auth.canDeleteWarehouse" class="flex gap-2 pt-3 border-t border-zinc-800">
+          <button v-if="auth.canEditWarehouse" @click="openEdit(wh)" class="btn-secondary flex-1 text-xs py-1.5">
             <Pencil class="w-3 h-3" /> Edit
           </button>
-          <button v-if="auth.canDelete" @click="confirmDelete(wh)" class="btn-danger flex-1 text-xs py-1.5">
+          <button v-if="auth.canDeleteWarehouse" @click="confirmDelete(wh)" class="btn-danger flex-1 text-xs py-1.5">
             <Trash2 class="w-3 h-3" /> Hapus
           </button>
         </div>
@@ -67,30 +66,12 @@
               <label class="label">Nama Gudang</label>
               <input v-model="form.name" type="text" required class="input-field w-full" />
             </div>
-            <div class="space-y-1.5">
-              <label class="label">Region</label>
-              <input v-model="form.region" type="text" class="input-field w-full" />
-            </div>
-            <div class="space-y-1.5">
-              <label class="label">Negara</label>
-              <input v-model="form.country" type="text" class="input-field w-full" />
-            </div>
-            <div class="space-y-1.5">
-              <label class="label">Provinsi/State</label>
-              <input v-model="form.state" type="text" class="input-field w-full" />
-            </div>
-            <div class="space-y-1.5">
-              <label class="label">Kota</label>
-              <input v-model="form.city" type="text" class="input-field w-full" />
-            </div>
-            <div class="space-y-1.5">
-              <label class="label">Kode Pos</label>
-              <input v-model="form.postal_code" type="text" class="input-field w-full" />
-            </div>
-            <div class="space-y-1.5">
-              <label class="label">Telepon</label>
-              <input v-model="form.phone" type="text" class="input-field w-full" />
-            </div>
+            <div class="space-y-1.5"><label class="label">Region</label><input v-model="form.region" type="text" class="input-field w-full" /></div>
+            <div class="space-y-1.5"><label class="label">Negara</label><input v-model="form.country" type="text" class="input-field w-full" /></div>
+            <div class="space-y-1.5"><label class="label">Provinsi/State</label><input v-model="form.state" type="text" class="input-field w-full" /></div>
+            <div class="space-y-1.5"><label class="label">Kota</label><input v-model="form.city" type="text" class="input-field w-full" /></div>
+            <div class="space-y-1.5"><label class="label">Kode Pos</label><input v-model="form.postal_code" type="text" class="input-field w-full" /></div>
+            <div class="space-y-1.5"><label class="label">Telepon</label><input v-model="form.phone" type="text" class="input-field w-full" /></div>
             <div class="col-span-2 space-y-1.5">
               <label class="label">Alamat Lengkap</label>
               <textarea v-model="form.address" rows="2" class="input-field w-full resize-none"></textarea>
@@ -103,9 +84,7 @@
           <p v-if="formError" class="text-red-400 text-xs">{{ formError }}</p>
           <div class="flex justify-end gap-3 pt-2">
             <button type="button" @click="showModal = false" class="btn-secondary">Batal</button>
-            <button type="submit" :disabled="submitting" class="btn-primary">
-              {{ submitting ? 'Menyimpan...' : 'Simpan' }}
-            </button>
+            <button type="submit" :disabled="submitting" class="btn-primary">{{ submitting ? 'Menyimpan...' : 'Simpan' }}</button>
           </div>
         </form>
       </div>
@@ -115,14 +94,10 @@
     <div v-if="showDeleteModal" class="modal-overlay" @click.self="showDeleteModal = false">
       <div class="modal-box max-w-sm">
         <h3 class="text-base font-bold text-zinc-100 mb-2">Hapus Gudang?</h3>
-        <p class="text-sm text-zinc-400 mb-6">
-          Gudang <strong class="text-zinc-200">{{ deletingWh?.name }}</strong> akan dihapus.
-        </p>
+        <p class="text-sm text-zinc-400 mb-6">Gudang <strong class="text-zinc-200">{{ deletingWh?.name }}</strong> akan dihapus.</p>
         <div class="flex justify-end gap-3">
           <button @click="showDeleteModal = false" class="btn-secondary">Batal</button>
-          <button @click="handleDelete" :disabled="submitting" class="btn-danger">
-            {{ submitting ? 'Menghapus...' : 'Hapus' }}
-          </button>
+          <button @click="handleDelete" :disabled="submitting" class="btn-danger">{{ submitting ? 'Menghapus...' : 'Hapus' }}</button>
         </div>
       </div>
     </div>
@@ -146,7 +121,6 @@ const editingWh = ref<WarehouseType | null>(null)
 const deletingWh = ref<WarehouseType | null>(null)
 const submitting = ref(false)
 const formError = ref('')
-
 const form = ref({ name: '', region: '', country: '', state: '', city: '', postal_code: '', address: '', phone: '', is_active: true })
 
 async function fetchWarehouses() {
@@ -155,13 +129,10 @@ async function fetchWarehouses() {
     const res = await warehousesApi.list({ per_page: 50 })
     warehouses.value = res.data.data
     meta.value = res.data.meta
-  } finally {
-    loading.value = false
-  }
+  } finally { loading.value = false }
 }
 
 function openCreate() {
-  if (!auth.canCreate) return
   editingWh.value = null
   form.value = { name: '', region: '', country: '', state: '', city: '', postal_code: '', address: '', phone: '', is_active: true }
   formError.value = ''
@@ -169,7 +140,6 @@ function openCreate() {
 }
 
 function openEdit(wh: WarehouseType) {
-  if (!auth.canEdit) return
   editingWh.value = wh
   form.value = { name: wh.name, region: wh.region ?? '', country: wh.country ?? '', state: wh.state ?? '', city: wh.city ?? '', postal_code: wh.postal_code ?? '', address: wh.address ?? '', phone: wh.phone ?? '', is_active: wh.is_active }
   formError.value = ''
@@ -177,7 +147,6 @@ function openEdit(wh: WarehouseType) {
 }
 
 function confirmDelete(wh: WarehouseType) {
-  if (!auth.canDelete) return
   deletingWh.value = wh
   showDeleteModal.value = true
 }
@@ -186,18 +155,13 @@ async function handleSubmit() {
   submitting.value = true
   formError.value = ''
   try {
-    if (editingWh.value) {
-      await warehousesApi.update(editingWh.value.id, form.value)
-    } else {
-      await warehousesApi.create(form.value)
-    }
+    if (editingWh.value) { await warehousesApi.update(editingWh.value.id, form.value) }
+    else { await warehousesApi.create(form.value) }
     showModal.value = false
     fetchWarehouses()
   } catch (e: any) {
     formError.value = e.response?.data?.message ?? 'Gagal menyimpan'
-  } finally {
-    submitting.value = false
-  }
+  } finally { submitting.value = false }
 }
 
 async function handleDelete() {
@@ -207,9 +171,7 @@ async function handleDelete() {
     await warehousesApi.destroy(deletingWh.value.id)
     showDeleteModal.value = false
     fetchWarehouses()
-  } finally {
-    submitting.value = false
-  }
+  } finally { submitting.value = false }
 }
 
 onMounted(fetchWarehouses)

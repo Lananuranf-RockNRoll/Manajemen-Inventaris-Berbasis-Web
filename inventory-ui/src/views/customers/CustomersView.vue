@@ -5,7 +5,7 @@
         <h2 class="text-lg font-bold text-zinc-100">Customer</h2>
         <p class="text-xs text-zinc-500">{{ meta?.total ?? 0 }} customer</p>
       </div>
-      <button v-if="auth.canCreate" @click="openCreate" class="btn-primary">
+      <button v-if="auth.canCreateCustomer" @click="openCreate" class="btn-primary">
         <Plus class="w-4 h-4" /> Tambah Customer
       </button>
     </div>
@@ -42,8 +42,7 @@
             <td class="td text-zinc-400">{{ cust.email ?? '—' }}</td>
             <td class="td text-zinc-400 hidden md:table-cell">{{ cust.phone ?? '—' }}</td>
             <td class="td text-right text-zinc-300">${{ fmtUSD(cust.credit_limit) }}</td>
-            <td class="td text-right"
-              :class="Number(cust.credit_used) > 0 ? 'text-amber-400' : 'text-zinc-500'">
+            <td class="td text-right" :class="Number(cust.credit_used) > 0 ? 'text-amber-400' : 'text-zinc-500'">
               ${{ fmtUSD(cust.credit_used) }}
             </td>
             <td class="td text-right font-semibold"
@@ -55,16 +54,15 @@
             </td>
             <td class="td text-center">
               <div class="flex items-center justify-center gap-1.5">
-                <!-- Credit adjust: manager+ -->
-                <button v-if="auth.canEdit" @click="openCreditModal(cust)"
+                <button v-if="auth.canManageCredit" @click="openCreditModal(cust)"
                   class="btn-icon text-zinc-400 hover:text-amber-400" title="Atur Credit">
                   <DollarSign class="w-3.5 h-3.5" />
                 </button>
-                <button v-if="auth.canEdit" @click="openEdit(cust)"
+                <button v-if="auth.canEditCustomer" @click="openEdit(cust)"
                   class="btn-icon text-zinc-400 hover:text-indigo-400" title="Edit">
                   <Pencil class="w-3.5 h-3.5" />
                 </button>
-                <button v-if="auth.canDelete" @click="confirmDelete(cust)"
+                <button v-if="auth.canDeleteCustomer" @click="confirmDelete(cust)"
                   class="btn-icon text-zinc-400 hover:text-red-400" title="Hapus">
                   <Trash2 class="w-3.5 h-3.5" />
                 </button>
@@ -84,15 +82,13 @@
       <div class="flex gap-1">
         <button v-for="page in visiblePages" :key="page" @click="fetchCustomers(page)"
           :class="['px-3 py-1.5 rounded-lg transition-colors',
-            page === meta.current_page
-              ? 'bg-indigo-600 text-white font-semibold'
-              : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700']">
+            page === meta.current_page ? 'bg-indigo-600 text-white font-semibold' : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700']">
           {{ page }}
         </button>
       </div>
     </div>
 
-    <!-- ── Create / Edit Modal ── -->
+    <!-- Create / Edit Modal -->
     <div v-if="showModal" class="modal-overlay" @click.self="showModal = false">
       <div class="modal-box">
         <h3 class="text-base font-bold text-zinc-100 mb-5">
@@ -145,15 +141,11 @@
       </div>
     </div>
 
-    <!-- ── Credit Management Modal ── -->
+    <!-- Credit Management Modal -->
     <div v-if="showCreditModal" class="modal-overlay" @click.self="showCreditModal = false">
       <div class="modal-box max-w-sm">
         <h3 class="text-base font-bold text-zinc-100 mb-1">Atur Credit</h3>
-        <p class="text-sm text-zinc-400 mb-4">
-          <strong class="text-zinc-200">{{ creditCust?.name }}</strong>
-        </p>
-
-        <!-- Current credit info -->
+        <p class="text-sm text-zinc-400 mb-4"><strong class="text-zinc-200">{{ creditCust?.name }}</strong></p>
         <div class="bg-zinc-800 rounded-lg p-3 mb-4 space-y-1.5 text-sm">
           <div class="flex justify-between">
             <span class="text-zinc-400">Limit saat ini</span>
@@ -165,13 +157,11 @@
           </div>
           <div class="flex justify-between border-t border-zinc-700 pt-1.5">
             <span class="text-zinc-400">Tersedia</span>
-            <span class="font-bold"
-              :class="Number(creditCust?.credit_available) > 0 ? 'text-emerald-400' : 'text-red-400'">
+            <span class="font-bold" :class="Number(creditCust?.credit_available) > 0 ? 'text-emerald-400' : 'text-red-400'">
               ${{ fmtUSD(creditCust?.credit_available) }}
             </span>
           </div>
         </div>
-
         <form @submit.prevent="handleCreditAdjust" class="space-y-4">
           <div class="space-y-1.5">
             <label class="label">Aksi</label>
@@ -182,24 +172,18 @@
             </select>
           </div>
           <div class="space-y-1.5">
-            <label class="label">
-              {{ creditForm.action === 'set' ? 'Nilai Baru (USD)' : 'Jumlah (USD)' }}
-            </label>
+            <label class="label">{{ creditForm.action === 'set' ? 'Nilai Baru (USD)' : 'Jumlah (USD)' }}</label>
             <div class="relative">
               <span class="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500 text-sm">$</span>
-              <input v-model="creditForm.amount" type="number" step="0.01" min="0" required
-                class="input-field w-full pl-7" />
+              <input v-model="creditForm.amount" type="number" step="0.01" min="0" required class="input-field w-full pl-7" />
             </div>
           </div>
-
-          <!-- Reset credit used (admin only) -->
           <div v-if="auth.isAdmin" class="pt-1 border-t border-zinc-800">
             <button type="button" @click="handleResetCreditUsed"
               class="text-xs text-amber-400 hover:text-amber-300 transition-colors">
               ⚠️ Reset Credit Terpakai ke $0 (koreksi manual)
             </button>
           </div>
-
           <p v-if="creditError" class="text-red-400 text-xs bg-red-400/10 p-2 rounded">{{ creditError }}</p>
           <div class="flex justify-end gap-3 pt-2">
             <button type="button" @click="showCreditModal = false" class="btn-secondary">Batal</button>
@@ -211,7 +195,7 @@
       </div>
     </div>
 
-    <!-- ── Delete Modal ── -->
+    <!-- Delete Modal -->
     <div v-if="showDeleteModal" class="modal-overlay" @click.self="showDeleteModal = false">
       <div class="modal-box max-w-sm">
         <h3 class="text-base font-bold text-zinc-100 mb-2">Hapus Customer?</h3>
@@ -237,25 +221,22 @@ import { useAuthStore } from '@/stores/auth'
 import type { Customer, PaginationMeta } from '@/types'
 
 const auth = useAuthStore()
-const customers = ref<Customer[]>([])
-const meta = ref<PaginationMeta | null>(null)
-const loading = ref(true)
-const search = ref('')
-const statusFilter = ref('')
+const customers     = ref<Customer[]>([])
+const meta          = ref<PaginationMeta | null>(null)
+const loading       = ref(true)
+const search        = ref('')
+const statusFilter  = ref('')
+const showModal     = ref(false)
+const showDeleteModal  = ref(false)
+const showCreditModal  = ref(false)
+const editingCust   = ref<Customer | null>(null)
+const deletingCust  = ref<Customer | null>(null)
+const creditCust    = ref<Customer | null>(null)
+const submitting    = ref(false)
+const formError     = ref('')
+const creditError   = ref('')
 
-const showModal = ref(false)
-const showDeleteModal = ref(false)
-const showCreditModal = ref(false)
-
-const editingCust = ref<Customer | null>(null)
-const deletingCust = ref<Customer | null>(null)
-const creditCust = ref<Customer | null>(null)
-
-const submitting = ref(false)
-const formError = ref('')
-const creditError = ref('')
-
-const form = ref({ name: '', email: '', phone: '', address: '', credit_limit: '300', status: 'active' })
+const form       = ref({ name: '', email: '', phone: '', address: '', credit_limit: '300', status: 'active' })
 const creditForm = ref({ action: 'add' as 'add' | 'subtract' | 'set', amount: '' })
 
 const visiblePages = computed(() => {
@@ -289,13 +270,10 @@ async function fetchCustomers(page = 1) {
     const res = await customersApi.list({ page, search: search.value || undefined, status: statusFilter.value || undefined, per_page: 15 })
     customers.value = res.data.data
     meta.value = res.data.meta
-  } finally {
-    loading.value = false
-  }
+  } finally { loading.value = false }
 }
 
 function openCreate() {
-  if (!auth.canCreate) return
   editingCust.value = null
   form.value = { name: '', email: '', phone: '', address: '', credit_limit: '300', status: 'active' }
   formError.value = ''
@@ -303,22 +281,13 @@ function openCreate() {
 }
 
 function openEdit(cust: Customer) {
-  if (!auth.canEdit) return
   editingCust.value = cust
-  form.value = {
-    name: cust.name,
-    email: cust.email ?? '',
-    phone: cust.phone ?? '',
-    address: cust.address ?? '',
-    credit_limit: cust.credit_limit,
-    status: cust.status
-  }
+  form.value = { name: cust.name, email: cust.email ?? '', phone: cust.phone ?? '', address: cust.address ?? '', credit_limit: cust.credit_limit, status: cust.status }
   formError.value = ''
   showModal.value = true
 }
 
 function openCreditModal(cust: Customer) {
-  if (!auth.canEdit) return
   creditCust.value = cust
   creditForm.value = { action: 'add', amount: '' }
   creditError.value = ''
@@ -326,46 +295,36 @@ function openCreditModal(cust: Customer) {
 }
 
 function confirmDelete(cust: Customer) {
-  if (!auth.canDelete) return
   deletingCust.value = cust
   showDeleteModal.value = true
 }
 
 async function handleSubmit() {
-  submitting.value = true
-  formError.value = ''
+  submitting.value = true; formError.value = ''
   try {
-    if (editingCust.value) {
-      await customersApi.update(editingCust.value.id, form.value)
-    } else {
-      await customersApi.create(form.value)
-    }
+    if (editingCust.value) { await customersApi.update(editingCust.value.id, form.value) }
+    else { await customersApi.create(form.value) }
     showModal.value = false
     fetchCustomers(meta.value?.current_page ?? 1)
   } catch (e: any) {
     formError.value = e.response?.data?.message ?? 'Gagal menyimpan'
-  } finally {
-    submitting.value = false
-  }
+  } finally { submitting.value = false }
 }
 
 async function handleCreditAdjust() {
   if (!creditCust.value) return
-  submitting.value = true
-  creditError.value = ''
+  submitting.value = true; creditError.value = ''
   try {
     await customersApi.adjustCredit(creditCust.value.id, creditForm.value.action, Number(creditForm.value.amount))
     showCreditModal.value = false
     fetchCustomers(meta.value?.current_page ?? 1)
   } catch (e: any) {
     creditError.value = e.response?.data?.message ?? 'Gagal mengatur credit'
-  } finally {
-    submitting.value = false
-  }
+  } finally { submitting.value = false }
 }
 
 async function handleResetCreditUsed() {
-  if (!creditCust.value || !confirm('Reset credit terpakai ke $0? Pastikan ini koreksi yang valid.')) return
+  if (!creditCust.value || !confirm('Reset credit terpakai ke $0?')) return
   submitting.value = true
   try {
     await customersApi.resetCreditUsed(creditCust.value.id)
@@ -373,9 +332,7 @@ async function handleResetCreditUsed() {
     fetchCustomers(meta.value?.current_page ?? 1)
   } catch (e: any) {
     creditError.value = e.response?.data?.message ?? 'Gagal reset credit'
-  } finally {
-    submitting.value = false
-  }
+  } finally { submitting.value = false }
 }
 
 async function handleDelete() {
@@ -385,9 +342,7 @@ async function handleDelete() {
     await customersApi.destroy(deletingCust.value.id)
     showDeleteModal.value = false
     fetchCustomers(meta.value?.current_page ?? 1)
-  } finally {
-    submitting.value = false
-  }
+  } finally { submitting.value = false }
 }
 
 onMounted(fetchCustomers)

@@ -6,7 +6,7 @@
         <h2 class="page-title">Produk</h2>
         <p class="page-subtitle">{{ meta?.total ?? 0 }} produk terdaftar</p>
       </div>
-      <button v-if="auth.canCreate" @click="openCreate" class="btn-primary self-start sm:self-auto">
+      <button v-if="auth.canCreateProduct" @click="openCreate" class="btn-primary self-start sm:self-auto">
         <Plus class="w-4 h-4" />
         <span>Tambah Produk</span>
       </button>
@@ -37,7 +37,7 @@
                 <th class="th text-right">Harga Jual</th>
                 <th class="th text-right">Margin</th>
                 <th class="th text-center">Status</th>
-                <th v-if="auth.canEdit || auth.canDelete" class="th text-center">Aksi</th>
+                <th v-if="auth.canEditProduct || auth.canDeleteProduct" class="th text-center">Aksi</th>
               </tr>
             </thead>
             <tbody>
@@ -55,10 +55,10 @@
                 <td class="td text-center">
                   <span :class="product.is_active ? 'badge-green' : 'badge-red'">{{ product.is_active ? 'Aktif' : 'Nonaktif' }}</span>
                 </td>
-                <td v-if="auth.canEdit || auth.canDelete" class="td text-center">
+                <td v-if="auth.canEditProduct || auth.canDeleteProduct" class="td text-center">
                   <div class="flex items-center justify-center gap-2">
-                    <button v-if="auth.canEdit" @click="openEdit(product)" class="btn-icon text-zinc-400 hover:text-indigo-400" title="Edit"><Pencil class="w-3.5 h-3.5" /></button>
-                    <button v-if="auth.canDelete" @click="confirmDelete(product)" class="btn-icon text-zinc-400 hover:text-red-400" title="Hapus"><Trash2 class="w-3.5 h-3.5" /></button>
+                    <button v-if="auth.canEditProduct" @click="openEdit(product)" class="btn-icon text-zinc-400 hover:text-indigo-400" title="Edit"><Pencil class="w-3.5 h-3.5" /></button>
+                    <button v-if="auth.canDeleteProduct" @click="confirmDelete(product)" class="btn-icon text-zinc-400 hover:text-red-400" title="Hapus"><Trash2 class="w-3.5 h-3.5" /></button>
                   </div>
                 </td>
               </tr>
@@ -82,9 +82,9 @@
                   <span class="text-xs text-emerald-400 font-medium">+{{ product.profit_percentage }}%</span>
                 </div>
               </div>
-              <div v-if="auth.canEdit || auth.canDelete" class="flex gap-1 shrink-0">
-                <button v-if="auth.canEdit" @click="openEdit(product)" class="btn-icon text-zinc-400 hover:text-indigo-400"><Pencil class="w-4 h-4" /></button>
-                <button v-if="auth.canDelete" @click="confirmDelete(product)" class="btn-icon text-zinc-400 hover:text-red-400"><Trash2 class="w-4 h-4" /></button>
+              <div v-if="auth.canEditProduct || auth.canDeleteProduct" class="flex gap-1 shrink-0">
+                <button v-if="auth.canEditProduct" @click="openEdit(product)" class="btn-icon text-zinc-400 hover:text-indigo-400"><Pencil class="w-4 h-4" /></button>
+                <button v-if="auth.canDeleteProduct" @click="confirmDelete(product)" class="btn-icon text-zinc-400 hover:text-red-400"><Trash2 class="w-4 h-4" /></button>
               </div>
             </div>
           </div>

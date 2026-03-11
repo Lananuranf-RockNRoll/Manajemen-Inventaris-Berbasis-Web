@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="space-y-5">
     <div class="page-header">
       <div>
@@ -10,7 +10,7 @@
           <FileSpreadsheet class="w-3.5 h-3.5" />
           <span>{{ exporting === 'excel' ? '...' : 'Excel' }}</span>
         </button>
-        <button v-if="auth.canCreate" @click="openCreate" class="btn-primary">
+        <button v-if="auth.canCreateTransaction" @click="openCreate" class="btn-primary">
           <Plus class="w-4 h-4" />
           <span class="hidden sm:inline">Buat Order</span>
           <span class="sm:hidden">Order</span>
@@ -71,7 +71,7 @@
                       <FileDown class="w-3.5 h-3.5" v-if="downloadingInvoice !== trx.id" />
                       <Loader2 class="w-3.5 h-3.5 animate-spin" v-else />
                     </button>
-                    <button v-if="auth.canEdit && ['pending','processing','shipped'].includes(trx.status)"
+                    <button v-if="auth.canUpdateTransactionStatus && ['pending','processing','shipped'].includes(trx.status)"
                       @click="openUpdateStatus(trx)" class="btn-icon text-zinc-400 hover:text-amber-400" title="Update Status">
                       <RefreshCw class="w-3.5 h-3.5" />
                     </button>
@@ -102,7 +102,7 @@
                   <FileDown class="w-4 h-4" v-if="downloadingInvoice !== trx.id" />
                   <Loader2 class="w-4 h-4 animate-spin" v-else />
                 </button>
-                <button v-if="auth.canEdit && ['pending','processing','shipped'].includes(trx.status)"
+                <button v-if="auth.canUpdateTransactionStatus && ['pending','processing','shipped'].includes(trx.status)"
                   @click="openUpdateStatus(trx)" class="btn-icon text-zinc-400 hover:text-amber-400">
                   <RefreshCw class="w-4 h-4" />
                 </button>
