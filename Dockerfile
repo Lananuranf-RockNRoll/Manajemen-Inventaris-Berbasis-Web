@@ -51,7 +51,8 @@ ENTRYPOINT ["/entrypoint.sh"]
 # ============================================================
 # Stage 2 — Frontend Build (Vue 3)
 # ============================================================
-FROM node:20-alpine AS frontend-build
+# Pin ke 20.19 agar memenuhi engines: "node": "^20.19.0 || >=22.12.0"
+FROM node:20.19-alpine AS frontend-build
 
 WORKDIR /app
 COPY inventory-ui/package*.json ./
