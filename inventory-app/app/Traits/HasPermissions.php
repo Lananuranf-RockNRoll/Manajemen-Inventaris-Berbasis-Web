@@ -6,15 +6,11 @@ use App\Enums\Permission;
 use App\Enums\Role;
 
 /**
- * HasPermissions — tambahkan ke User model untuk cek hak akses berbasis Permission enum.
+ * HasPermissions — RBAC berbasis Permission enum.
  *
- * Cara pakai:
- *   $user->can(Permission::PRODUCT_CREATE)     // true/false
- *   $user->canAny([Permission::PRODUCT_CREATE, Permission::PRODUCT_UPDATE])
- *   $user->canAll([Permission::PRODUCT_CREATE, Permission::PRODUCT_UPDATE])
- *
- * CATATAN: method can() TIDAK didefinisikan di sini.
- * Override can() ada di User model agar tidak konflik dengan Laravel Gate.
+ * PENTING: Tidak boleh mendefinisikan method yang sudah ada di
+ * Illuminate\Foundation\Auth\User yaitu: can(), canAny(), canAll().
+ * Gunakan hasPermission(), hasAnyPermission(), hasAllPermissions() sebagai gantinya.
  */
 trait HasPermissions
 {
@@ -35,14 +31,25 @@ trait HasPermissions
     }
 
     /**
+     * Cek apakah user punya permission tertentu.
+     * Gunakan ini di dalam controller/middleware.
+     *
+     * Contoh: $user->hasPermission(Permission::PRODUCT_CREATE)
+     */
+    public function hasPermission(Permission $permission): bool
+    {
+        return in_array($permission, $this->permissions(), strict: true);
+    }
+
+    /**
      * Cek apakah user punya setidaknya satu dari beberapa permission.
      *
      * @param  Permission[]  $permissions
      */
-    public function canAny(array $permissions): bool
+    public function hasAnyPermission(array $permissions): bool
     {
         foreach ($permissions as $permission) {
-            if ($this->can($permission)) {
+            if ($this->hasPermission($permission)) {
                 return true;
             }
         }
@@ -55,10 +62,10 @@ trait HasPermissions
      *
      * @param  Permission[]  $permissions
      */
-    public function canAll(array $permissions): bool
+    public function hasAllPermissions(array $permissions): bool
     {
         foreach ($permissions as $permission) {
-            if (! $this->can($permission)) {
+            if (! $this->hasPermission($permission)) {
                 return false;
             }
         }

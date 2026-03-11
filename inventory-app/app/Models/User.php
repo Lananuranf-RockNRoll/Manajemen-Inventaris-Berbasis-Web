@@ -44,27 +44,20 @@ class User extends Authenticatable
         return $this->hasOne(Employee::class);
     }
 
-    // ── Permission check ──────────────────────────────────────────────────────
+    // ── Permission override ───────────────────────────────────────────────────
 
     /**
      * Override Laravel Gate can() agar support Permission enum kita.
      *
-     * - Jika argument adalah Permission enum  → cek via resolvedPermissions (RBAC kita)
-     * - Jika argument adalah string/lainnya   → delegate ke Laravel Gate (Sanctum dll)
-     *
-     * Ini penting agar createToken(), Sanctum middleware, dan Gate::allows()
-     * tetap jalan normal tanpa konflik.
-     *
-     * @param  Permission|string  $permission
-     * @param  mixed              $arguments
+     * - Permission enum  → cek RBAC kita via hasPermission()
+     * - String/lainnya   → delegate ke Laravel Gate (untuk Sanctum, dll)
      */
     public function can($permission, $arguments = []): bool
     {
         if ($permission instanceof Permission) {
-            return in_array($permission, $this->permissions(), strict: true);
+            return $this->hasPermission($permission);
         }
 
-        // Fallback ke Laravel Gate untuk semua pengecekan internal framework
         return parent::can($permission, $arguments);
     }
 }
